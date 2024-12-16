@@ -1,7 +1,5 @@
 # PSI 2024Z - Funnel
 
-
-
 ## Zadanie
 Celem zadania jest implementacja serwera HTTP, który będzie posiadał następujące funkcjonalności:
 
@@ -13,7 +11,26 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 - Funkcjonalność widoku indeksu katalogu (GET /katalog powinien zwrócić odnośniki do plików i podkatalogów, poprawnie renderowane w przeglądarce).
 - Dla chętnych: obsługa nagłówka Range.
 ## Założenia funkcjonalne
-
+1. Serwer powinien odczytywać konfigurację z pliku YAML lub TOML, umożliwiającego dostosowanie parametrów takich jak:
+    - Host i port serwera.
+    - Ścieżki do zamontowanych katalogów.
+    - Reguły autoryzacji (Basic i Bearer).
+    - Dodatkowe ustawienia opcjonalne (np. obsługa Range).
+2. Administrator powinien mieć możliwość przypisania katalogów lokalnych do wybranych ścieżek HTTP oraz nazw hostów za pomocą pliku konfiguracyjnego.
+3. Serwer musi poprawnie obsługiwać nagłówek Host, odrzucając żądania z niepoprawnym hostem.
+4. Serwer powinien obsługiwać nagłówek Authorization:
+    - Basic: Weryfikacja loginu i hasła użytkownika.
+    - Bearer: Weryfikacja tokenu dostępowego.
+5. Serwer powinien obsługiwać metody HTTP:
+    - GET: Odczyt zasobów, w tym możliwość generowania widoku indeksu katalogu.
+    - POST: Tworzenie lub przesyłanie zasobów.
+    - DELETE: Usuwanie zasobów.
+6. Serwer powinien udostępniać widok indeksu katalogu. W przypadku żądania GET /katalog serwer powinien generować widok HTML zawierający listę plików i podkatalogów.
+7. Serwer powinien obsługiwać i zwracać odpowiednie kody statusu:
+    - 400 Bad Request dla niepoprawnych żądań.
+    - 401 Unauthorized dla braku autoryzacji.
+    - 403 Forbidden dla niedozwolonych działań.
+    - 404 Not Found dla nieistniejących zasobów.
 ## Założenia niefunkcjonalne
 
 ## Przypadki użycia
@@ -74,6 +91,39 @@ W rezultacie serwer zwraca kod błędu 400 Bad Request
 
 
 ## Analiza sytuacji błędnych i ich obsługa
+1. Brak parametrów niezbędnych do konfiguracji serwera. Obługiawane za pomocą komunikatu zwrotnego na przykład:
+```Error: Invalid configuration file. Missing 'port' parameter.```
+2. Błędna składnie pliku konfiguracyjnego. Obsługowane za pomocą wiadomości zwrotnej.
+3. Błedny/brak nagłówka host w żądaniu. Serwer zwraca kod błędu 400 z wiadomością:
+```
+{
+  "error": "Invalid Host header. The host is not recognized by the server."
+}
+```
+4. Brak nagłówka Authorization w przypadku żądania do zasobu chronionego. Obsłużone za pomocą kodu błędu 401 Unauthorized i przykładowej wiadomości:
+```
+{
+  "error": "Authorization header is missing."
+}
+```
+5. Nieprawidłowy login/hasło w autoryzacji Basic lub nieprawidłowy token w autoryzacji Bearer kiedy żądany jest dostęp do zasobu chronionego . Obsłużone za pomocą kodu błędu 403 Forbidden i przykładowej wiadomości:
+```
+{
+  "error": "Invalid credentials or token."
+}
+```
+6. Użytkownik próbuje uzyskać dostęp do pliku lub katalogu, który nie istnieje. Obsłużone przez zwrócenie kodu 404 Not Found z przykładową treścią
+```
+{
+  "error": "The requested resource was not found."
+}
+```
+7. Użytkownik używa nieobsługiwanej metody np PATCH. Obsłużone przez wysłanie kodu odpowiedzi 405 Method Not Allowed z treścią:
+```
+{
+  "error": "HTTP method not allowed. Allowed methods: GET, POST, DELETE."
+}
+```
 
 ## Środowisko sprzętowo-programowe i narzędziowe
 
