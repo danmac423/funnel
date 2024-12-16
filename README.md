@@ -19,7 +19,7 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 ## Przypadki użycia
 Podstawowe przypadki użycia:
 - Administrator uruchamia serwer podając ścieżkę do pliku konfiguracyjnego, np.:
-'''
+```
 host: "localhost"
 port: 8080
 mounts:
@@ -32,7 +32,7 @@ auth:
       admin: "password123"
   bearer:
     token: "my-secret-token"
-'''
+```
 Serwer uruchamia się zgodnie z podaną konfiguracją
 - Użytkownik odwiedza adres podany w konfiguracji np. http://example.com/static w przeglądarce, gdzie serwer udostępnia pliki z katalogu /var/www/static. Przykładowe żądanie:
 GET http://example.com/static/file.txt z nagłówkiem Host: example.com.
@@ -55,12 +55,12 @@ W rezultacie otrzymujemy kod HTML wygenerowany przez serwer
 Przykładowe żądanie: POST http://example.com/api/upload
 Z nagłówkiem Content-Type: application/json
 O treści:
-'''
+```
 {
   "filename": "data.txt",
   "content": "Hello, World!"
 }
-'''
+```
 Serwer w rezultacie zapisuje plik i zwraca kod 201 Created.
 
 - Użytkownik usuwa zasób z serwera za pomocą DELETE. Np.
