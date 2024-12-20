@@ -107,9 +107,6 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 7. **Utrzymywalność**
    - Kod jest zgodny ze standardami **PEP8** i zawiera dokumentację użytkową.
 
-
-Oto sekcja **Podstawowe przypadki użycia** z realistycznymi scenariuszami obsługi zdarzeń dla projektu:
-
 ---
 
 ## **Przypadki użycia**
