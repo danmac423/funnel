@@ -16,3 +16,7 @@ line-length = 79
 # overlap with the use of a formatter, like Black, but we can override this behavior by
 # explicitly adding the rule.
 extend-select = ["E501"]
+
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
