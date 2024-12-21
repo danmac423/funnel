@@ -58,3 +58,15 @@ def test_get_handler():
     router.add_route("/home", ["GET"], handler)
 
     assert router.get_handler("/home", "GET")() == "This is home"
+
+
+def test_route_decorator():
+    router = Router()
+
+    @router.route("/home", ["GET"])
+    def handler():
+        return "This is home"
+
+    assert "/home" in router.routes
+    assert "GET" in router.routes["/home"]
+    assert router.routes["/home"]["GET"]() == "This is home"
