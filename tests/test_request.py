@@ -131,7 +131,5 @@ def test_missing_body_for_post_request():
         "Content-Type: application/json\r\n"
         "Content-Length: 0\r\n\r\n"
     )
-    request = Request(raw_request)
-
-    assert request.body == ""
-    assert request.parsed_body == ""
+    with pytest.raises(BadRequestError, match="Missing body in POST request."):
+        Request(raw_request)
