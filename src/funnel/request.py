@@ -1,3 +1,7 @@
+"""
+This module provides a class to represent and parse an HTTP request.
+"""
+
 from typing import Dict, Optional, Tuple, Union
 import urllib.parse
 import json
