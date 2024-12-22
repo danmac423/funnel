@@ -1,3 +1,5 @@
+import json
+
 import funnel.exceptions as ex
 
 
@@ -29,7 +31,7 @@ def test_error_to_http_response():
     response = error.to_http_response()
     assert response.status_code == 500
     assert response.reason == "Internal Server Error"
-    assert response.body == {
+    assert json.loads(response.body) == {
         "error": "Custom error",
         "status_code": 500,
         "key": "value",

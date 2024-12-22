@@ -62,7 +62,7 @@ class Response:
             + "\r\n".join(
                 f"{key}: {value}" for key, value in self.headers.items()
             )
-            + (f"\r\n\r\n{self.body}" if self.body else "")
+            + f"\r\n\r\n{self.body}"
         )
 
     @classmethod
