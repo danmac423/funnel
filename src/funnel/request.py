@@ -109,13 +109,14 @@ class Request:
         Raises:
             BadRequestError: If the body is invalid.
         """
-        try:
-            body_start = self.raw_request.find("\r\n\r\n")
-            if body_start == -1:
-                return None
-            return self.raw_request[body_start + 4 :].strip()  # After headers
-        except Exception:
-            raise BadRequestError("Invalid body in request.")
+
+        body_start = self.raw_request.find("\r\n\r\n")
+        if body_start == -1:
+            return None
+        body = self.raw_request[body_start + 4 :]
+        if self.method == "POST" and not body:
+            raise BadRequestError("Missing body in POST request.")
+        return self.raw_request[body_start + 4 :].strip()  # After headers
 
     def _parse_body_content(self) -> Optional[Union[Dict, str]]:
         """
