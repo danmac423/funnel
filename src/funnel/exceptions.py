@@ -65,7 +65,7 @@ class FunnelError(Exception):
         return Response.json(
             status_code=self.status_code,
             reason=self.error_reason,
-            data=self.to_dict(),
+            json_data=self.to_dict(),
         )
 
 
