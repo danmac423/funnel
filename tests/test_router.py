@@ -1,6 +1,7 @@
 import pytest
 
 from funnel.router import Router
+from funnel.exceptions import NotFoundError, MethodNotAllowedError
 
 
 def test_add_route():
@@ -31,7 +32,7 @@ def test_add_route_duplicate():
 def test_get_handler_path_not_found():
     router = Router()
 
-    with pytest.raises(ValueError, match="No route found for path: /home"):
+    with pytest.raises(NotFoundError, match="No route found for path: /home"):
         router.get_handler("/home", "GET")
 
 
@@ -44,7 +45,7 @@ def test_get_handler_method_not_allowed():
     router.add_route("/home", ["POST"], handler)
 
     with pytest.raises(
-        ValueError, match="Method GET not allowed for path: /home"
+        MethodNotAllowedError, match="Method GET not allowed for path: /home"
     ):
         router.get_handler("/home", "GET")
 
