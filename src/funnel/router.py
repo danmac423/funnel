@@ -4,6 +4,8 @@ This module contains the Router class to manage routes and handlers.
 
 from typing import Callable
 
+from funnel.exceptions import MethodNotAllowedError, NotFoundError
+
 
 class Router:
     """
@@ -69,14 +71,16 @@ class Router:
             method (str): Method of the route
 
         Raises:
-            ValueError: If no route
-            ValueError: If method not allowed
+            NotFoundError: If no route found for the path
+            MethodNotAllowedError: If method not allowed for the path
 
         Returns:
             Callable: Handler function
         """
         if path not in self.routes:
-            raise ValueError(f"No route found for path: {path}")
+            raise NotFoundError(f"No route found for path: {path}")
         if method not in self.routes[path]:
-            raise ValueError(f"Method {method} not allowed for path: {path}")
+            raise MethodNotAllowedError(
+                f"Method {method} not allowed for path: {path}"
+            )
         return self.routes[path][method]
