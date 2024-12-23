@@ -18,7 +18,7 @@ class HTTPServer:
         self.host = host
         self.port = port
         self.router = Router()
-        self.threads = []
+        self.threads: list[threading.Thread] = []
 
     def start(self) -> None:
         """
