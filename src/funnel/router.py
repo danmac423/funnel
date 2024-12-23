@@ -77,6 +77,7 @@ class Router:
         Returns:
             Callable: Handler function
         """
+        
         if path not in self.routes:
             raise NotFoundError(f"No route found for path: {path}")
         if method not in self.routes[path]:
