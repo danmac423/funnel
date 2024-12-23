@@ -1,12 +1,16 @@
 from funnel.funnel import HTTPServer
 from funnel.response import Response
 from funnel.auth import Auth
+from funnel.user_source import JsonUserSource
 from datetime import datetime, timedelta, timezone
-from funnel.logging_helper import get_user_from_file
 import jwt
 
+
+
 auth = Auth()
-server = HTTPServer(host="127.0.0.1", port=8001)
+auth.configure_user_source(JsonUserSource("users.json"))
+
+server = HTTPServer(host="127.0.0.1", port=8000)
 
 SECRET_KEY = "abc123"
 
@@ -28,7 +32,7 @@ def login(request):
     username = credentials.get("username")
     password = credentials.get("password")
 
-    user = get_user_from_file(username, "users.json")
+    user = auth.user_source.get_user(username)
     if not user or password != user["password"]:
         return Response.json(401, "Unauthorized", {
             "error": "Invalid credentials"
@@ -57,13 +61,14 @@ def about(request):
     return Response.html(200, "OK", "<h1>About this Server</h1>")
 
 
+
 @server.route("/protected", methods=["GET"])
-@auth.authenticate(user_file="users.json", type="Bearer")
+@auth.authenticate(type="Basic")
 def protected_endpoint(request):
     return Response.json(
         200,
         "OK",
-        {"message": f"Welcome, {request.user['username']}!"},
+        {"message": "Welcome!"}
     )
 
 
@@ -77,5 +82,4 @@ def handle_data(request):
 
 
 if __name__ == "__main__":
-    # print(generate_test_token())
     server.start()

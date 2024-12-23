@@ -2,14 +2,18 @@ import jwt
 import datetime
 import base64
 from functools import wraps
+from funnel.user_source import UserSource
 from funnel.exceptions import UnauthorizedError
 from funnel.request import Request
 from typing import Callable
-from funnel.logging_helper import get_user_from_file
 
 
 class Auth:
     SECRET_KEY = "abc123"
+    user_source = None
+
+    def configure_user_source(self, source: UserSource):
+        Auth.user_source = source
 
     @staticmethod
     def generate_token(payload: dict, expiration_hours: int = 1) -> str:
@@ -29,12 +33,11 @@ class Auth:
         return jwt.encode(payload, Auth.SECRET_KEY, algorithm="HS256")
 
     @staticmethod
-    def authenticate_user_bearer(token: str, user_file: str) -> dict:
+    def authenticate_user_bearer(token: str):
         """Authenticate a user using a Bearer token.
 
         Args:
             token (str): JWT token
-            user_file (str): Path to the file containing user data
 
         Raises:
             ValueError: User not found
@@ -42,18 +45,16 @@ class Auth:
         Returns:
             dict: User data
         """
-        payload = Auth.verify_token(token)
+        payload = Auth.decode_token(token)
 
         username = payload.get("username")
-        user = get_user_from_file(username, user_file)  # change
+        user = Auth.user_source.get_user(username)
 
         if not user:
             raise ValueError("User not found")
 
-        return user
-
     @staticmethod
-    def authenticate_user_basic(auth_header: str, user_file: str) -> dict:
+    def authenticate_user_basic(encoded_credentials: str):
         """Authenticate a user using Basic Auth.
 
         Args:
@@ -64,20 +65,18 @@ class Auth:
             dict: User data
         """
         try:
-            encoded_credentials = auth_header.split(" ")[1]
             credentials = base64.b64decode(encoded_credentials).decode("utf-8")
             username, password = credentials.split(":")
 
-            user = get_user_from_file(username, user_file)
+            user = Auth.user_source.get_user(username)
             if not user or password != user.get("password"):
                 raise ValueError("Invalid credentials")
 
-            return user
         except Exception as e:
             raise ValueError(f"Invalid Basic Auth header: {e}")
 
     @staticmethod
-    def verify_token(token: str) -> dict:
+    def decode_token(token: str) -> dict:
         """Verify the given JWT token.
 
         Args:
@@ -95,17 +94,19 @@ class Auth:
             raise ValueError("Invalid token. Please log in again.")
 
     @staticmethod
-    def authenticate(user_file: str, type: str = "Bearer"):
+    def authenticate(type: str = "Bearer"):
         """Decorator to authenticate users using Bearer or Basic Auth.
 
         Args:
-            user_file (str): Path to the file containing user data
             type (str, optional): Type of authentication. Defaults to "Bearer".
         """
 
         def decorator(func: Callable):
             @wraps(func)
             def wrapper(request: Request, *args, **kwargs):
+                if Auth.user_source is None:
+                    raise UnauthorizedError("User source not configured")
+
                 auth_header = request.headers.get("Authorization")
                 if not auth_header:
                     raise UnauthorizedError(
@@ -125,8 +126,7 @@ class Auth:
                             "Unauthorized: Missing or invalid token"
                         )
                     try:
-                        user = Auth.authenticate_user_bearer(token, user_file)
-                        request.user = user
+                        Auth.authenticate_user_bearer(token)
                     except ValueError as e:
                         raise UnauthorizedError(f"Authorization failed: {e}")
 
@@ -137,10 +137,8 @@ class Auth:
                         )
 
                     try:
-                        user = Auth.authenticate_user_basic(
-                            auth_header, user_file
-                        )
-                        request.user = user
+                        encoded_credentials = auth_header.split(" ")[1]
+                        Auth.authenticate_user_basic(encoded_credentials)
                     except ValueError as e:
                         raise UnauthorizedError(
                             f"Basic authentication failed: {e}"

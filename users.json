@@ -2,12 +2,10 @@
     "users": [
         {
             "username": "john_doe",
-            "role": "admin",
             "password": "admin123"
         },
         {
             "username": "jane_smith",
-            "role": "user",
             "password": "user123"
         }
     ]
