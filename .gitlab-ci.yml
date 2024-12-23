@@ -10,6 +10,7 @@ ruff-lint:
     - python -m pip install --upgrade pip
     - pip install uv
     - uv sync
+    - source .venv/bin/activate
   script:
     - ruff check .
   rules:
@@ -24,6 +25,7 @@ mypy-type-check:
     - python -m pip install --upgrade pip
     - pip install uv
     - uv sync
+    - source .venv/bin/activate
   script:
     - mypy . --ignore-missing-imports --check-untyped-defs
   rules:
@@ -38,6 +40,7 @@ pytest-tests:
     - python -m pip install --upgrade pip
     - pip install uv
     - uv sync
+    - source .venv/bin/activate
   script:
     - pytest --maxfail=1 --disable-warnings
   rules:
