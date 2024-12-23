@@ -1,4 +1,6 @@
 import socket
+import threading
+
 from typing import Callable
 
 from funnel.request import Request
@@ -16,6 +18,7 @@ class HTTPServer:
         self.host = host
         self.port = port
         self.router = Router()
+        self.threads: list[threading.Thread] = []
 
     def start(self) -> None:
         """
@@ -26,12 +29,29 @@ class HTTPServer:
             socket.AF_INET, socket.SOCK_STREAM
         ) as server_socket:
             server_socket.bind((self.host, self.port))
-            server_socket.listen(5)
+            server_socket.listen(256)
             print(f"Server is running on http://{self.host}:{self.port}")
-            while True:
-                client_socket, _ = server_socket.accept()
-                with client_socket:
-                    self._handle_request(client_socket)
+            try:
+                while True:
+                    client_socket, client_address = server_socket.accept()
+                    print(f"Accepted connection from {client_address}")
+
+                    thread = threading.Thread(
+                        target=self._handle_request, args=(client_socket,)
+                    )
+                    self.threads.append(thread)
+                    thread.start()
+            except KeyboardInterrupt:
+                print("\nShutting down server...")
+                self._shutdown()
+
+    def _shutdown(self) -> None:
+        """
+        Shutdown the server.
+        """
+        for thread in self.threads:
+            thread.join()
+        print("Server has been shut down.")
 
     def _handle_request(self, client_socket: socket.socket) -> None:
         """
@@ -57,8 +77,9 @@ class HTTPServer:
                 additional_data={"details": str(e)},
             )
             response = error.to_http_response()
-
-        client_socket.sendall(response.to_http().encode("utf-8"))
+        finally:
+            client_socket.sendall(response.to_http().encode("utf-8"))
+            client_socket.close()
 
     def route(self, path: str, methods: list[str]) -> Callable:
         """
