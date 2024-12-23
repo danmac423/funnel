@@ -1,0 +1,45 @@
+stages:
+  - lint
+  - test
+
+# Lint stage with mypy
+ruff-lint:
+  stage: lint
+  image: python:3.13
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install uv
+    - uv sync
+  script:
+    - ruff check .
+  rules:
+    - changes:
+        - "**/*.py"
+
+# Lint stage with mypy
+mypy-type-check:
+  stage: lint
+  image: python:3.13
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install uv
+    - uv sync
+  script:
+    - mypy . --ignore-missing-imports --check-untyped-defs
+  rules:
+    - changes:
+        - "**/*.py"
+
+# Test stage with pytest
+pytest-tests:
+  stage: test
+  image: python:3.13
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install uv
+    - uv sync
+  script:
+    - pytest --maxfail=1 --disable-warnings
+  rules:
+    - changes:
+        - "**/*.py"
