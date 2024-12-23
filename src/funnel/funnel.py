@@ -1,5 +1,7 @@
 import socket
 import threading
+import signal
+import sys
 
 from typing import Callable
 
@@ -19,39 +21,52 @@ class HTTPServer:
         self.port = port
         self.router = Router()
         self.threads: list[threading.Thread] = []
+        self._running = threading.Event()
+        self._running.set()
+
+        signal.signal(signal.SIGINT, self._handle_signal)
+        signal.signal(signal.SIGTERM, self._handle_signal)
+
+    def _handle_signal(self, sig, _) -> None:
+        """
+        Handle a signal to stop the server.
+        """
+        print(f"Received signal {sig}. Stopping server...")
+        self._shutdown()
 
     def start(self) -> None:
         """
         Start the HTTP server and listen for incoming requests.
         """
         print(f"Starting server on {self.host}:{self.port}...")
+
         with socket.socket(
             socket.AF_INET, socket.SOCK_STREAM
         ) as server_socket:
             server_socket.bind((self.host, self.port))
             server_socket.listen(256)
             print(f"Server is running on http://{self.host}:{self.port}")
-            try:
-                while True:
-                    client_socket, client_address = server_socket.accept()
-                    print(f"Accepted connection from {client_address}")
 
-                    thread = threading.Thread(
-                        target=self._handle_request, args=(client_socket,)
-                    )
-                    self.threads.append(thread)
-                    thread.start()
-            except KeyboardInterrupt:
-                print("\nShutting down server...")
-                self._shutdown()
+            while True:
+                client_socket, client_address = server_socket.accept()
+                print(f"Accepted connection from {client_address}")
+
+                thread = threading.Thread(
+                    target=self._handle_request, args=(client_socket,)
+                )
+                thread.daemon = True
+                self.threads.append(thread)
+                thread.start()
 
     def _shutdown(self) -> None:
         """
-        Shutdown the server.
+        Shutdown the server, ensuring all threads complete.
         """
+        print("Waiting for threads to finish...")
         for thread in self.threads:
             thread.join()
         print("Server has been shut down.")
+        sys.exit(0)
 
     def _handle_request(self, client_socket: socket.socket) -> None:
         """
