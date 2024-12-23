@@ -107,7 +107,7 @@ class Request:
                 urllib.parse.parse_qsl(parsed_url.query, strict_parsing=True)
             )
         except ValueError as e:
-            raise BadRequestError(f"Invalid query parameters: {e}")
+            raise BadRequestError(f"Invalid query parameters: {e}.")
         except Exception:
             raise BadRequestError("Invalid query parameters in request.")
 

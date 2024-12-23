@@ -77,7 +77,7 @@ def test_missing_host_header():
     raw_request = (
         "GET /api/resource HTTP/1.1\r\nUser-Agent: TestClient\r\n\r\n"
     )
-    with pytest.raises(BadRequestError, match="Missing required Host header."):
+    with pytest.raises(BadRequestError, match="Missing or empty Host header."):
         Request(raw_request)
 
 
@@ -93,7 +93,8 @@ def test_invalid_query_params():
         "Host: localhost:8080\r\n\r\n"
     )
     with pytest.raises(
-        BadRequestError, match="Invalid query parameters in request."
+        BadRequestError,
+        match="Invalid query parameters: bad query field: 'badquery'.",
     ):
         Request(raw_request)
 
