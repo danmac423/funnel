@@ -59,10 +59,6 @@ class Request:
         if not lines or len(lines[0].split(" ")) < 3:
             raise BadRequestError("Invalid request line.")
         method, path, protocol = lines[0].split(" ")
-        if not method or not path or not protocol:
-            raise BadRequestError(
-                "Missing method, path, or protocol in request line."
-            )
         return method, path, protocol
 
     def _parse_headers(self) -> dict[str, str]:
@@ -116,10 +112,8 @@ class Request:
             return dict(
                 urllib.parse.parse_qsl(parsed_url.query, strict_parsing=True)
             )
-        except ValueError as e:
+        except Exception as e:
             raise BadRequestError(f"Invalid query parameters: {e}.")
-        except Exception:
-            raise BadRequestError("Invalid query parameters in request.")
 
     def _parse_body(self) -> Optional[str]:
         """
@@ -131,14 +125,33 @@ class Request:
         Raises:
             BadRequestError: If the body is invalid.
         """
-
         body_start = self.raw_request.find("\r\n\r\n")
         if body_start == -1:
+            if self.method in {"POST"}:
+                raise BadRequestError("Missing body separator in the request.")
             return None
+
         body = self.raw_request[body_start + 4 :].strip()
-        if self.method == "POST" and not body:
-            raise BadRequestError("Missing body in POST request.")
-        return body
+
+        content_length = self.headers.get("Content-Length")
+        if content_length:
+            try:
+                expected_length = int(content_length)
+                if len(body) != expected_length:
+                    raise BadRequestError(
+                        "Content-Length does not match body length."
+                        + f"Expected {expected_length} but got {len(body)}."
+                    )
+            except ValueError:
+                raise BadRequestError("Invalid Content-Length header.")
+
+        if self.method in {"POST"} and not body:
+            raise BadRequestError("Missing body content in request.")
+
+        if self.method in {"GET", "DELETE", "HEAD", "OPTIONS"}:
+            return body if body else None
+
+        return body if body else None
 
     def _parse_body_content(self) -> Optional[dict | str]:
         """
@@ -168,5 +181,3 @@ class Request:
             raise BadRequestError(
                 f"Invalid form data in request body: {str(e)}"
             )
-        except Exception:
-            raise BadRequestError("Invalid body content in request.")
