@@ -59,6 +59,10 @@ class Request:
         if not lines or len(lines[0].split(" ")) < 3:
             raise BadRequestError("Invalid request line.")
         method, path, protocol = lines[0].split(" ")
+        if not method or not path or not protocol:
+            raise BadRequestError(
+                "Missing method, path, or protocol in request line."
+            )
         return method, path, protocol
 
     def _parse_headers(self) -> Dict[str, str]:
@@ -80,9 +84,11 @@ class Request:
             if ":" not in line:
                 raise BadRequestError("Invalid headers in request.")
             key, value = line.split(":", 1)
+            if not key.strip() or not value.strip():
+                raise BadRequestError("Header key or value cannot be empty.")
             headers[key.strip()] = value.strip()
-        if "Host" not in headers:
-            raise BadRequestError("Missing required Host header.")
+        if "Host" not in headers or not headers["Host"]:
+            raise BadRequestError("Missing or empty Host header.")
         return headers
 
     def _parse_query_params(self) -> Dict[str, str]:
@@ -100,6 +106,8 @@ class Request:
             return dict(
                 urllib.parse.parse_qsl(parsed_url.query, strict_parsing=True)
             )
+        except ValueError as e:
+            raise BadRequestError(f"Invalid query parameters: {e}")
         except Exception:
             raise BadRequestError("Invalid query parameters in request.")
 
@@ -133,16 +141,22 @@ class Request:
             BadRequestError: If the body content is invalid.
         """
         content_type = self.headers.get("Content-Type", "").lower()
-        if content_type == "application/json" and self.body:
-            try:
+        try:
+            if content_type == "application/json" and self.body:
                 return json.loads(self.body)
-            except json.JSONDecodeError:
-                raise BadRequestError("Invalid JSON in request body.")
-        elif content_type == "application/x-www-form-urlencoded" and self.body:
-            try:
+            elif (
+                content_type == "application/x-www-form-urlencoded"
+                and self.body
+            ):
                 return dict(
                     urllib.parse.parse_qsl(self.body, strict_parsing=True)
                 )
-            except Exception:
-                raise BadRequestError("Invalid form data in request body.")
-        return self.body
+            return self.body
+        except json.JSONDecodeError as e:
+            raise BadRequestError(f"Invalid JSON in request body: {str(e)}")
+        except ValueError as e:
+            raise BadRequestError(
+                f"Invalid form data in request body: {str(e)}"
+            )
+        except Exception:
+            raise BadRequestError("Invalid body content in request.")
