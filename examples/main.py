@@ -1,8 +1,25 @@
 from funnel.funnel import HTTPServer
 from funnel.response import Response
+from funnel.auth import Auth
+from datetime import datetime, timedelta, timezone
+import jwt
+
+auth = Auth()
+server = HTTPServer(host="127.0.0.1", port=8001)
+
+SECRET_KEY = "abc123"
 
 
-server = HTTPServer(host="127.0.0.1", port=8080)
+def generate_test_token():
+    now = datetime.now(timezone.utc)
+    payload = {
+        "username": "john_doe",
+        "role": "admin",
+        "password": "admin123",
+        "exp": now + timedelta(hours=1),
+        "iat": now,
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
 
 @server.route("/", methods=["GET"])
@@ -15,7 +32,20 @@ def about(request):
     return Response.html(200, "OK", "<h1>About this Server</h1>")
 
 
-@server.route("/data", methods=["POST"])
+@server.route("/protected", methods=["GET"])
+@auth.verify_token_decorator(user_file="users.json")
+def protected_endpoint(request):
+    return Response.json(
+        200,
+        "OK",
+        {
+            "message": f"Welcome, {request.user['username']}!",
+            "role": request.user["role"],
+        },
+    )
+
+
+@server.route("/data", methods=["GET", "POST"])
 def handle_data(request):
     return Response.json(
         201,
@@ -25,4 +55,5 @@ def handle_data(request):
 
 
 if __name__ == "__main__":
+    # print(generate_test_token())
     server.start()

@@ -60,9 +60,7 @@ class Request:
             raise BadRequestError("Invalid request line.")
         method, path, protocol = lines[0].split(" ")
         if not method or not path or not protocol:
-            raise BadRequestError(
-                "Missing method, path, or protocol in request line."
-            )
+            raise BadRequestError("Missing method, path, or protocol in request line.")
         return method, path, protocol
 
     def _parse_headers(self) -> Dict[str, str]:
@@ -106,9 +104,7 @@ class Request:
         """
         try:
             parsed_url = urllib.parse.urlparse(self.path)
-            return dict(
-                urllib.parse.parse_qsl(parsed_url.query, strict_parsing=True)
-            )
+            return dict(urllib.parse.parse_qsl(parsed_url.query, strict_parsing=True))
         except ValueError as e:
             raise BadRequestError(f"Invalid query parameters: {e}.")
         except Exception:
@@ -147,19 +143,12 @@ class Request:
         try:
             if content_type == "application/json" and self.body:
                 return json.loads(self.body)
-            elif (
-                content_type == "application/x-www-form-urlencoded"
-                and self.body
-            ):
-                return dict(
-                    urllib.parse.parse_qsl(self.body, strict_parsing=True)
-                )
+            elif content_type == "application/x-www-form-urlencoded" and self.body:
+                return dict(urllib.parse.parse_qsl(self.body, strict_parsing=True))
             return self.body
         except json.JSONDecodeError as e:
             raise BadRequestError(f"Invalid JSON in request body: {str(e)}")
         except ValueError as e:
-            raise BadRequestError(
-                f"Invalid form data in request body: {str(e)}"
-            )
+            raise BadRequestError(f"Invalid form data in request body: {str(e)}")
         except Exception:
             raise BadRequestError("Invalid body content in request.")

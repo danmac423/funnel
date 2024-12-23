@@ -22,9 +22,7 @@ class HTTPServer:
         Start the HTTP server and listen for incoming requests.
         """
         print(f"Starting server on {self.host}:{self.port}...")
-        with socket.socket(
-            socket.AF_INET, socket.SOCK_STREAM
-        ) as server_socket:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
             server_socket.bind((self.host, self.port))
             server_socket.listen(5)
             print(f"Server is running on http://{self.host}:{self.port}")
