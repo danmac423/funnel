@@ -2,7 +2,7 @@
 This module provides a class to represent and parse an HTTP request.
 """
 
-from typing import Dict, Optional, Tuple, Union
+from typing import Optional
 import urllib.parse
 import json
 
@@ -45,12 +45,12 @@ class Request:
         self.body = self._parse_body()
         self.parsed_body = self._parse_body_content()
 
-    def _parse_request_line(self) -> Tuple[str, str, str]:
+    def _parse_request_line(self) -> tuple[str, str, str]:
         """
         Parse the request line from the HTTP request.
 
         Returns:
-            Tuple[str, str, str]: Method, path, and protocol.
+            tuple[str, str, str]: Method, path, and protocol.
 
         Raises:
             BadRequestError: If the request line is invalid.
@@ -65,12 +65,12 @@ class Request:
             )
         return method, path, protocol
 
-    def _parse_headers(self) -> Dict[str, str]:
+    def _parse_headers(self) -> dict[str, str]:
         """
         Parse the headers from the HTTP request.
 
         Returns:
-            Dict[str, str]: Parsed headers.
+            dict[str, str]: Parsed headers.
 
         Raises:
             BadRequestError: If the headers are invalid
@@ -89,17 +89,24 @@ class Request:
             if not key or not value:
                 raise BadRequestError("Header key or value cannot be empty.")
 
-            headers[key] = value
+            if key in headers:
+                raise BadRequestError(
+                    f"Multiple headers with same key: {key}."
+                )
+            else:
+                headers[key] = value
+
         if "Host" not in headers or not headers["Host"]:
             raise BadRequestError("Missing or empty Host header.")
+
         return headers
 
-    def _parse_query_params(self) -> Dict[str, str]:
+    def _parse_query_params(self) -> dict[str, str]:
         """
         Parse the query parameters from the URL.
 
         Returns:
-            Dict[str, str]: Parsed query parameters.
+            dict[str, str]: Parsed query parameters.
 
         Raises:
             BadRequestError: If the query parameters are invalid.
@@ -128,17 +135,17 @@ class Request:
         body_start = self.raw_request.find("\r\n\r\n")
         if body_start == -1:
             return None
-        body = self.raw_request[body_start + 4 :]
+        body = self.raw_request[body_start + 4 :].strip()
         if self.method == "POST" and not body:
             raise BadRequestError("Missing body in POST request.")
-        return self.raw_request[body_start + 4 :].strip()  # After headers
+        return body
 
-    def _parse_body_content(self) -> Optional[Union[Dict, str]]:
+    def _parse_body_content(self) -> Optional[dict | str]:
         """
         Parse the body content as JSON or form data.
 
         Returns:
-            Optional[Union[Dict, str]]: Parsed body content.
+            Optional[dict | str]: Parsed body content.
 
         Raises:
             BadRequestError: If the body content is invalid.
