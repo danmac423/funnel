@@ -50,7 +50,7 @@ class Request:
         Parse the request line from the HTTP request.
 
         Returns:
-            Tuple[str, str, str]: Method, path, and protocol.
+            tuple[str, str, str]: Method, path, and protocol.
 
         Raises:
             BadRequestError: If the request line is invalid.
@@ -70,7 +70,7 @@ class Request:
         Parse the headers from the HTTP request.
 
         Returns:
-            Dict[str, str]: Parsed headers.
+            dict[str, str]: Parsed headers.
 
         Raises:
             BadRequestError: If the headers are invalid
@@ -106,7 +106,7 @@ class Request:
         Parse the query parameters from the URL.
 
         Returns:
-            Dict[str, str]: Parsed query parameters.
+            dict[str, str]: Parsed query parameters.
 
         Raises:
             BadRequestError: If the query parameters are invalid.
@@ -145,7 +145,7 @@ class Request:
         Parse the body content as JSON or form data.
 
         Returns:
-            Optional[Union[Dict, str]]: Parsed body content.
+            Optional[dict | str]: Parsed body content.
 
         Raises:
             BadRequestError: If the body content is invalid.
