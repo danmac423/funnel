@@ -2,6 +2,7 @@ stages:
   - lint
   - test
 
+
 # Lint stage with mypy
 ruff-lint:
   stage: lint
@@ -10,11 +11,13 @@ ruff-lint:
     - python -m pip install --upgrade pip
     - pip install uv
     - uv sync
+    - source .venv/bin/activate
   script:
     - ruff check .
   rules:
     - changes:
         - "**/*.py"
+
 
 # Lint stage with mypy
 mypy-type-check:
@@ -24,6 +27,7 @@ mypy-type-check:
     - python -m pip install --upgrade pip
     - pip install uv
     - uv sync
+    - source .venv/bin/activate
   script:
     - mypy . --ignore-missing-imports --check-untyped-defs
   rules:
@@ -38,6 +42,7 @@ pytest-tests:
     - python -m pip install --upgrade pip
     - pip install uv
     - uv sync
+    - source .venv/bin/activate
   script:
     - pytest --maxfail=1 --disable-warnings
   rules:
