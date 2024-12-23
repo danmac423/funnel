@@ -84,9 +84,12 @@ class Request:
             if ":" not in line:
                 raise BadRequestError("Invalid headers in request.")
             key, value = line.split(":", 1)
-            if not key.strip() or not value.strip():
+            key = key.strip()
+            value = value.strip()
+            if not key or not value:
                 raise BadRequestError("Header key or value cannot be empty.")
-            headers[key.strip()] = value.strip()
+
+            headers[key] = value
         if "Host" not in headers or not headers["Host"]:
             raise BadRequestError("Missing or empty Host header.")
         return headers
