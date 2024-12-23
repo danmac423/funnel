@@ -2,6 +2,7 @@ stages:
   - lint
   - test
 
+
 # Lint stage with mypy
 ruff-lint:
   stage: lint
@@ -16,6 +17,7 @@ ruff-lint:
   rules:
     - changes:
         - "**/*.py"
+
 
 # Lint stage with mypy
 mypy-type-check:
