@@ -31,7 +31,7 @@ def test_error_to_http_response():
     response = error.to_http_response()
     assert response.status_code == 500
     assert response.reason == "Internal Server Error"
-    assert json.loads(response.body) == {
+    assert json.loads(response.body if response.body else "") == {
         "error": "Custom error",
         "status_code": 500,
         "key": "value",
