@@ -87,6 +87,24 @@ def test_invalid_headers():
         Request(raw_request)
 
 
+def test_no_host_header():
+    raw_request = "GET /api/resource HTTP/1.1\r\n\r\n"
+    with pytest.raises(BadRequestError, match="Missing or empty Host header."):
+        Request(raw_request)
+
+
+def test_multiple_same_headers():
+    raw_request = (
+        "GET /api/resource HTTP/1.1\r\n"
+        "Host: localhost:8080\r\n"
+        "Host: localhost:8081\r\n\r\n"
+    )
+    with pytest.raises(
+        BadRequestError, match="Multiple headers with same key: Host."
+    ):
+        Request(raw_request)
+
+
 def test_invalid_query_params():
     raw_request = (
         "GET /api/resource?key=value&badquery HTTP/1.1\r\n"
