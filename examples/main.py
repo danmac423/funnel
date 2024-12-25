@@ -2,7 +2,7 @@ from funnel.funnel import HTTPServer
 from funnel.response import Response
 
 
-server = HTTPServer(host="127.0.0.1", port=8080)
+server = HTTPServer("./config/server_config.yaml")
 
 
 @server.route("/", methods=["GET"])

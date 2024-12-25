@@ -1,6 +1,7 @@
 import socket
 import signal
 import sys
+import os
 
 from typing import Callable, Optional
 from concurrent.futures import ThreadPoolExecutor
@@ -8,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from funnel.request import Request
 from funnel.router import Router
 from funnel.exceptions import FunnelError
+from funnel.utils import load_config, directory_handler_factory
 
 
 class HTTPServer:
@@ -16,12 +18,43 @@ class HTTPServer:
     routing, and request handling.
     """
 
-    def __init__(self, host: str, port: int, max_workers: int = 10):
-        self.host = host
-        self.port = port
+    def __init__(self, config_path: str):
+        config = load_config(config_path)
+
+        self.host = config.get("host", "127.0.0.1")
+        self.port = config.get("port", 8080)
+
         self.router = Router()
-        self.executor = ThreadPoolExecutor(max_workers=max_workers)
+        self.executor = ThreadPoolExecutor(
+            max_workers=config.get("max_workers", 10)
+        )
         self._running = False
+
+        for mount in config.get("mounted_directories", []):
+            base_path = mount["path"].rstrip("/")
+            root_directory = mount["directory"]
+
+            for current_dir, sub_dirs, files in os.walk(root_directory):
+                relative_path = os.path.relpath(current_dir, root_directory)
+                if relative_path == ".":
+                    relative_path = ""
+
+                url_path = f"{base_path}/{relative_path}".replace("//", "/")
+                self.router._add_route(
+                    path=url_path,
+                    methods=["GET"],
+                    handler=directory_handler_factory(current_dir),
+                )
+
+                for file in files:
+                    file_url = f"{url_path}{file}"
+                    self.router._add_route(
+                        path=file_url,
+                        methods=["GET"],
+                        handler=directory_handler_factory(
+                            f"{current_dir}/{file}"
+                        ),
+                    )
 
         signal.signal(signal.SIGINT, self._handle_signal)
         signal.signal(signal.SIGTERM, self._handle_signal)
