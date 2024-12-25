@@ -2,9 +2,16 @@
 This module contains the Router class to manage routes and handlers.
 """
 
-from typing import Callable
+from typing import Callable, Optional
+from dataclasses import dataclass
 
 from funnel.exceptions import MethodNotAllowedError, NotFoundError
+
+
+@dataclass(frozen=True)
+class RouteKey:
+    host: Optional[str]  # None if no host is specified
+    path: str
 
 
 class Router:
@@ -21,10 +28,14 @@ class Router:
     """
 
     def __init__(self):
-        self.routes: dict[str, dict[str, Callable]] = {}
+        self.routes: dict[RouteKey, dict[str, Callable]] = {}
 
-    def add_route(
-        self, path: str, methods: list[str], handler: Callable
+    def _add_route(
+        self,
+        path: str,
+        methods: list[str],
+        handler: Callable,
+        host: Optional[str] = None,
     ) -> None:
         """
         Add a route to the router.
@@ -37,15 +48,20 @@ class Router:
         Raises:
             ValueError: If route already exists for the method and path
         """
-        if path not in self.routes:
-            self.routes[path] = {}
+
+        route_key = RouteKey(host=host, path=path)
+
+        if route_key not in self.routes:
+            self.routes[route_key] = {}
 
         for method in methods:
-            if method in self.routes[path]:
+            if method in self.routes[route_key]:
                 raise ValueError(f"Route already exists for {method} {path}")
-            self.routes[path][method] = handler
+            self.routes[route_key][method] = handler
 
-    def route(self, path: str, methods: list[str]) -> Callable:
+    def route(
+        self, path: str, *, methods: list[str], host: Optional[str] = None
+    ) -> Callable:
         """
         Decorator to add a route.
 
@@ -58,11 +74,13 @@ class Router:
         """
 
         def decorator(handler: Callable):
-            self.add_route(path, methods, handler)
+            self._add_route(path, methods, handler, host)
 
         return decorator
 
-    def get_handler(self, path: str, method: str) -> Callable:
+    def get_handler(
+        self, path: str, method: str, host: Optional[str] = None
+    ) -> Callable:
         """
         Get the handler for a path and method.
 
@@ -77,11 +95,17 @@ class Router:
         Returns:
             Callable: Handler function
         """
-        
-        if path not in self.routes:
-            raise NotFoundError(f"No route found for path: {path}")
-        if method not in self.routes[path]:
+
+        route_key = RouteKey(host=host, path=path)
+
+        if route_key not in self.routes:
+            route_key = RouteKey(host=None, path=path)
+            if route_key not in self.routes:
+                raise NotFoundError(f"No route found for path: {path}")
+
+        if method not in self.routes[route_key]:
             raise MethodNotAllowedError(
                 f"Method {method} not allowed for path: {path}"
             )
-        return self.routes[path][method]
+
+        return self.routes[route_key][method]
