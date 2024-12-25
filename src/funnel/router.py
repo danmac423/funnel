@@ -10,6 +10,14 @@ from funnel.exceptions import MethodNotAllowedError, NotFoundError
 
 @dataclass(frozen=True)
 class RouteKey:
+    """
+    Dataclass to represent a route key.
+
+    Attributes:
+        host (Optional[str]): Host of the route
+        path (str): Path of the route
+    """
+
     host: Optional[str]  # None if no host is specified
     path: str
 
@@ -19,12 +27,8 @@ class Router:
     Router class to manage routes and handlers.
 
     Attributes:
-        routes (dict[str, dict[str, Callable]]): Dictionary of routes
-
-    Methods:
-        add_route: Add a route to the router
-        route: Decorator to add a route
-        get_handler: Get the handler for a path and method
+        routes (dict[RouteKey, dict[str, Callable]]): Dictionary of routes
+            (dict[RouteKey, dict[method, handler]])
     """
 
     def __init__(self):
@@ -44,9 +48,10 @@ class Router:
             path (str): Path of the route
             methods (list[str]): List of allowed methods
             handler (Callable): Handler function
+            host (Optional[str]): Host of the route
 
         Raises:
-            ValueError: If route already exists for the method and path
+            ValueError: If route already exists for the host, method, and path
         """
 
         route_key = RouteKey(host=host, path=path)
@@ -68,6 +73,7 @@ class Router:
         Args:
             path (str): Path of the route
             methods (list[str]): List of allowed methods
+            host (Optional[str]): Host of the route
 
         Returns:
             Callable: Decorator function
@@ -87,6 +93,7 @@ class Router:
         Args:
             path (str): Path of the route
             method (str): Method of the route
+            host (Optional[str]): Host of the route
 
         Raises:
             NotFoundError: If no route found for the path
