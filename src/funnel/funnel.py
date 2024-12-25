@@ -1,9 +1,9 @@
 import socket
-import threading
 import signal
 import sys
 
 from typing import Callable, Optional
+from concurrent.futures import ThreadPoolExecutor
 
 from funnel.request import Request
 from funnel.router import Router
@@ -16,13 +16,12 @@ class HTTPServer:
     routing, and request handling.
     """
 
-    def __init__(self, host: str, port: int):
+    def __init__(self, host: str, port: int, max_workers: int = 10):
         self.host = host
         self.port = port
         self.router = Router()
-        self.threads: list[threading.Thread] = []
-        self._running = threading.Event()
-        self._running.set()
+        self.executor = ThreadPoolExecutor(max_workers=max_workers)
+        self._running = False
 
         signal.signal(signal.SIGINT, self._handle_signal)
         signal.signal(signal.SIGTERM, self._handle_signal)
@@ -31,7 +30,7 @@ class HTTPServer:
         """
         Handle a signal to stop the server.
         """
-        print(f"Received signal {sig}. Stopping server...")
+        print(f"\nReceived signal {sig}. Stopping server...")
         self._shutdown()
 
     def start(self) -> None:
@@ -39,6 +38,7 @@ class HTTPServer:
         Start the HTTP server and listen for incoming requests.
         """
         print(f"Starting server on {self.host}:{self.port}...")
+        self._running = True
 
         with socket.socket(
             socket.AF_INET, socket.SOCK_STREAM
@@ -47,24 +47,24 @@ class HTTPServer:
             server_socket.listen(256)
             print(f"Server is running on http://{self.host}:{self.port}")
 
-            while True:
-                client_socket, client_address = server_socket.accept()
-                print(f"Accepted connection from {client_address}")
+            try:
+                while self._running:
+                    client_socket, client_address = server_socket.accept()
+                    print(f"Accepted connection from {client_address}")
 
-                thread = threading.Thread(
-                    target=self._handle_request, args=(client_socket,)
-                )
-                thread.daemon = True
-                self.threads.append(thread)
-                thread.start()
+                    self.executor.submit(self._handle_request, client_socket)
+            except Exception as e:
+                print(f"Server error: {e}")
+            finally:
+                self._shutdown()
 
     def _shutdown(self) -> None:
         """
         Shutdown the server, ensuring all threads complete.
         """
-        print("Waiting for threads to finish...")
-        for thread in self.threads:
-            thread.join()
+        self._running = False
+        print("Shutting down server and waiting for all tasks to complete...")
+        self.executor.shutdown(wait=True)
         print("Server has been shut down.")
         sys.exit(0)
 
