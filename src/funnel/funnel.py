@@ -3,7 +3,7 @@ import threading
 import signal
 import sys
 
-from typing import Callable
+from typing import Callable, Optional
 
 from funnel.request import Request
 from funnel.router import Router
@@ -81,7 +81,9 @@ class HTTPServer:
                 return
 
             request = Request(raw_request)
-            handler = self.router.get_handler(request.path, request.method)
+            handler = self.router.get_handler(
+                request.path, request.method, request.headers.get("Host")
+            )
             response = handler(request)
 
         except FunnelError as e:
@@ -96,15 +98,18 @@ class HTTPServer:
             client_socket.sendall(response.to_http().encode("utf-8"))
             client_socket.close()
 
-    def route(self, path: str, methods: list[str]) -> Callable:
+    def route(
+        self, path: str, *, methods: list[str], host: Optional[str] = None
+    ) -> Callable:
         """
         Add a route using the Router.
 
         Args:
             path (str): Path of the route.
             methods (list[str]): Allowed HTTP methods.
+            host (Optional[str]): Host of the route.
 
         Returns:
             Callable: A decorator to register the route.
         """
-        return self.router.route(path, methods)
+        return self.router.route(path, methods=methods, host=host)
