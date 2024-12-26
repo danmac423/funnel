@@ -44,6 +44,13 @@ def home(request):
     return Response.html(200, "OK", "<h1>Welcome to the Home Page!</h1>")
 
 
+@server.route("/", methods=["GET"], host="example.com")
+def home_example(request):
+    return Response.html(
+        200, "OK", "<h1>Welcome to the Home Page of example.com host!</h1>"
+    )
+
+
 @server.route("/about", methods=["GET"])
 def about(request):
     return Response.html(200, "OK", "<h1>About this Server</h1>")

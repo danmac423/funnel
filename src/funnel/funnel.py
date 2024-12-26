@@ -1,5 +1,9 @@
 import socket
-from typing import Callable
+import signal
+import sys
+
+from typing import Callable, Optional
+from concurrent.futures import ThreadPoolExecutor
 
 from funnel.request import Request
 from funnel.router import Router
@@ -12,24 +16,60 @@ class HTTPServer:
     routing, and request handling.
     """
 
-    def __init__(self, host: str, port: int):
+    def __init__(self, host: str, port: int, max_workers: int = 10):
         self.host = host
         self.port = port
         self.router = Router()
+        self.executor = ThreadPoolExecutor(max_workers=max_workers)
+        self._running = False
+        self._shutdown_called = False
+
+        signal.signal(signal.SIGINT, self._handle_signal)
+        signal.signal(signal.SIGTERM, self._handle_signal)
+
+    def _handle_signal(self, sig, _) -> None:
+        """
+        Handle a signal to stop the server.
+        """
+        print(f"\nReceived signal {sig}. Stopping server...")
+        self._shutdown()
 
     def start(self) -> None:
         """
         Start the HTTP server and listen for incoming requests.
         """
         print(f"Starting server on {self.host}:{self.port}...")
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+        self._running = True
+
+        with socket.socket(
+            socket.AF_INET, socket.SOCK_STREAM
+        ) as server_socket:
             server_socket.bind((self.host, self.port))
-            server_socket.listen(5)
+            server_socket.listen(256)
             print(f"Server is running on http://{self.host}:{self.port}")
-            while True:
-                client_socket, _ = server_socket.accept()
-                with client_socket:
-                    self._handle_request(client_socket)
+
+            try:
+                while self._running:
+                    client_socket, client_address = server_socket.accept()
+                    print(f"Accepted connection from {client_address}")
+
+                    self.executor.submit(self._handle_request, client_socket)
+            except Exception as e:
+                print(f"Server error: {e}")
+            finally:
+                if not self._shutdown_called:
+                    self._shutdown()
+
+    def _shutdown(self) -> None:
+        """
+        Shutdown the server, ensuring all threads complete.
+        """
+        self._shutdown_called = True
+        self._running = False
+        print("Shutting down server and waiting for all tasks to complete...")
+        self.executor.shutdown(wait=True)
+        print("Server has been shut down.")
+        sys.exit(0)
 
     def _handle_request(self, client_socket: socket.socket) -> None:
         """
@@ -44,7 +84,9 @@ class HTTPServer:
                 return
 
             request = Request(raw_request)
-            handler = self.router.get_handler(request.path, request.method)
+            handler = self.router.get_handler(
+                request.path, request.method, request.headers.get("Host")
+            )
             response = handler(request)
 
         except FunnelError as e:
@@ -55,18 +97,22 @@ class HTTPServer:
                 additional_data={"details": str(e)},
             )
             response = error.to_http_response()
+        finally:
+            client_socket.sendall(response.to_http().encode("utf-8"))
+            client_socket.close()
 
-        client_socket.sendall(response.to_http().encode("utf-8"))
-
-    def route(self, path: str, methods: list[str]) -> Callable:
+    def route(
+        self, path: str, *, methods: list[str], host: Optional[str] = None
+    ) -> Callable:
         """
         Add a route using the Router.
 
         Args:
             path (str): Path of the route.
             methods (list[str]): Allowed HTTP methods.
+            host (Optional[str]): Host of the route.
 
         Returns:
             Callable: A decorator to register the route.
         """
-        return self.router.route(path, methods)
+        return self.router.route(path, methods=methods, host=host)

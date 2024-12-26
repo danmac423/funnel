@@ -2,7 +2,7 @@
 This module provides a class to represent and parse an HTTP request.
 """
 
-from typing import Dict, Optional, Tuple, Union
+from typing import Optional
 import urllib.parse
 import json
 
@@ -45,12 +45,12 @@ class Request:
         self.body = self._parse_body()
         self.parsed_body = self._parse_body_content()
 
-    def _parse_request_line(self) -> Tuple[str, str, str]:
+    def _parse_request_line(self) -> tuple[str, str, str]:
         """
         Parse the request line from the HTTP request.
 
         Returns:
-            Tuple[str, str, str]: Method, path, and protocol.
+            tuple[str, str, str]: Method, path, and protocol.
 
         Raises:
             BadRequestError: If the request line is invalid.
@@ -59,16 +59,14 @@ class Request:
         if not lines or len(lines[0].split(" ")) < 3:
             raise BadRequestError("Invalid request line.")
         method, path, protocol = lines[0].split(" ")
-        if not method or not path or not protocol:
-            raise BadRequestError("Missing method, path, or protocol in request line.")
         return method, path, protocol
 
-    def _parse_headers(self) -> Dict[str, str]:
+    def _parse_headers(self) -> dict[str, str]:
         """
         Parse the headers from the HTTP request.
 
         Returns:
-            Dict[str, str]: Parsed headers.
+            dict[str, str]: Parsed headers.
 
         Raises:
             BadRequestError: If the headers are invalid
@@ -87,28 +85,35 @@ class Request:
             if not key or not value:
                 raise BadRequestError("Header key or value cannot be empty.")
 
-            headers[key] = value
+            if key in headers:
+                raise BadRequestError(
+                    f"Multiple headers with same key: {key}."
+                )
+            else:
+                headers[key] = value
+
         if "Host" not in headers or not headers["Host"]:
             raise BadRequestError("Missing or empty Host header.")
+
         return headers
 
-    def _parse_query_params(self) -> Dict[str, str]:
+    def _parse_query_params(self) -> dict[str, str]:
         """
         Parse the query parameters from the URL.
 
         Returns:
-            Dict[str, str]: Parsed query parameters.
+            dict[str, str]: Parsed query parameters.
 
         Raises:
             BadRequestError: If the query parameters are invalid.
         """
         try:
             parsed_url = urllib.parse.urlparse(self.path)
-            return dict(urllib.parse.parse_qsl(parsed_url.query, strict_parsing=True))
-        except ValueError as e:
+            return dict(
+                urllib.parse.parse_qsl(parsed_url.query, strict_parsing=True)
+            )
+        except Exception as e:
             raise BadRequestError(f"Invalid query parameters: {e}.")
-        except Exception:
-            raise BadRequestError("Invalid query parameters in request.")
 
     def _parse_body(self) -> Optional[str]:
         """
@@ -120,21 +125,40 @@ class Request:
         Raises:
             BadRequestError: If the body is invalid.
         """
-
         body_start = self.raw_request.find("\r\n\r\n")
         if body_start == -1:
+            if self.method in {"POST"}:
+                raise BadRequestError("Missing body separator in the request.")
             return None
-        body = self.raw_request[body_start + 4 :]
-        if self.method == "POST" and not body:
-            raise BadRequestError("Missing body in POST request.")
-        return self.raw_request[body_start + 4 :].strip()  # After headers
 
-    def _parse_body_content(self) -> Optional[Union[Dict, str]]:
+        body = self.raw_request[body_start + 4 :].strip()
+
+        content_length = self.headers.get("Content-Length")
+        if content_length:
+            try:
+                expected_length = int(content_length)
+                if len(body) != expected_length:
+                    raise BadRequestError(
+                        "Content-Length does not match body length."
+                        + f"Expected {expected_length} but got {len(body)}."
+                    )
+            except ValueError:
+                raise BadRequestError("Invalid Content-Length header.")
+
+        if self.method in {"POST"} and not body:
+            raise BadRequestError("Missing body content in request.")
+
+        if self.method in {"GET", "DELETE", "HEAD", "OPTIONS"}:
+            return body if body else None
+
+        return body if body else None
+
+    def _parse_body_content(self) -> Optional[dict | str]:
         """
         Parse the body content as JSON or form data.
 
         Returns:
-            Optional[Union[Dict, str]]: Parsed body content.
+            Optional[dict | str]: Parsed body content.
 
         Raises:
             BadRequestError: If the body content is invalid.
@@ -149,6 +173,6 @@ class Request:
         except json.JSONDecodeError as e:
             raise BadRequestError(f"Invalid JSON in request body: {str(e)}")
         except ValueError as e:
-            raise BadRequestError(f"Invalid form data in request body: {str(e)}")
-        except Exception:
-            raise BadRequestError("Invalid body content in request.")
+            raise BadRequestError(
+                f"Invalid form data in request body: {str(e)}"
+            )
