@@ -70,18 +70,24 @@ def test_authenticate_user_bearer_user_not_found(mock_get_user):
 
 @patch("funnel.logging_helper.get_user_from_file")
 def test_authenticate_user_basic(mock_get_user):
-    mock_get_user.retun_value = {"username": "john_doe", "password": "admin123"}
+    mock_get_user.retun_value = {
+        "username": "john_doe", "password": "admin123"
+    }
 
-    auth_header = "Basic " + base64.b64encode(b"john_doe:admin123").decode("utf-8")
+    auth_header = "Basic " + base64.b64encode(
+        b"john_doe:admin123").decode("utf-8")
     user = Auth.authenticate_user_basic(auth_header, "users.json")
     assert user["username"] == "john_doe"
 
 
 @patch("funnel.logging_helper.get_user_from_file")
 def test_authenticate_user_basic_wrong_credentials(mock_get_user):
-    mock_get_user.retun_value = {"username": "john_doe", "password": "admin123"}
+    mock_get_user.retun_value = {
+        "username": "john_doe", "password": "admin123"
+    }
 
-    auth_header = "Basic " + base64.b64encode(b"john_doe:wrong_pass").decode("utf-8")
+    auth_header = "Basic " + base64.b64encode(
+        b"john_doe:wrong_pass").decode("utf-8")
     with pytest.raises(ValueError) as e:
         Auth.authenticate_user_basic(auth_header, "users.json")
     assert str(e.value) == "Invalid Basic Auth header: Invalid credentials"
@@ -89,9 +95,12 @@ def test_authenticate_user_basic_wrong_credentials(mock_get_user):
 
 @patch("funnel.logging_helper.get_user_from_file")
 def test_authenticate_user_basic_user_not_found(mock_get_user):
-    mock_get_user.retun_value = {"username": "john_doe", "password": "admin123"}
+    mock_get_user.retun_value = {
+        "username": "john_doe", "password": "admin123"
+    }
 
-    auth_header = "Basic " + base64.b64encode(b"wrong_user:wrong_pass").decode("utf-8")
+    auth_header = "Basic " + base64.b64encode(
+        b"wrong_user:wrong_pass").decode("utf-8")
     with pytest.raises(ValueError) as e:
         Auth.authenticate_user_basic(auth_header, "users.json")
     assert str(e.value) == "Invalid Basic Auth header: User not found"

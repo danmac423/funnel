@@ -3,7 +3,6 @@ from funnel.response import Response
 from funnel.auth import Auth
 from datetime import datetime, timedelta, timezone
 from funnel.logging_helper import get_user_from_file
-from funnel.exceptions import UnauthorizedError
 import jwt
 
 auth = Auth()
@@ -31,7 +30,9 @@ def login(request):
 
     user = get_user_from_file(username, "users.json")
     if not user or password != user["password"]:
-        return Response.json(401, "Unauthorized", {"error": "Invalid credentials"})
+        return Response.json(401, "Unauthorized", {
+            "error": "Invalid credentials"
+        })
 
     payload = {"username": username}
     token = auth.generate_token(payload)

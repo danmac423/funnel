@@ -17,7 +17,8 @@ class Auth:
 
         Args:
             payload (dict): User data (username) to be stored in the token.
-            expiration_hours (int, optional): Expiration time in hours. Defaults to 1.
+            expiration_hours (int, optional): Expiration time in hours.
+                Defaults to 1.
 
         Returns:
             str: JWT token
@@ -107,7 +108,9 @@ class Auth:
             def wrapper(request: Request, *args, **kwargs):
                 auth_header = request.headers.get("Authorization")
                 if not auth_header:
-                    raise UnauthorizedError("Unauthorized: Missing or invalid token")
+                    raise UnauthorizedError(
+                        "Unauthorized: Missing or invalid token"
+                    )
 
                 if type == "Bearer":
                     if not auth_header.startswith("Bearer "):
@@ -134,10 +137,14 @@ class Auth:
                         )
 
                     try:
-                        user = Auth.authenticate_user_basic(auth_header, user_file)
+                        user = Auth.authenticate_user_basic(
+                            auth_header, user_file
+                        )
                         request.user = user
                     except ValueError as e:
-                        raise UnauthorizedError(f"Basic authentication failed: {e}")
+                        raise UnauthorizedError(
+                            f"Basic authentication failed: {e}"
+                        )
 
                 return func(request, *args, **kwargs)
 
