@@ -22,6 +22,7 @@ class HTTPServer:
         self.router = Router()
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
         self._running = False
+        self._shutdown_called = False
 
         signal.signal(signal.SIGINT, self._handle_signal)
         signal.signal(signal.SIGTERM, self._handle_signal)
@@ -56,12 +57,14 @@ class HTTPServer:
             except Exception as e:
                 print(f"Server error: {e}")
             finally:
-                self._shutdown()
+                if not self._shutdown_called:
+                    self._shutdown()
 
     def _shutdown(self) -> None:
         """
         Shutdown the server, ensuring all threads complete.
         """
+        self._shutdown_called = True
         self._running = False
         print("Shutting down server and waiting for all tasks to complete...")
         self.executor.shutdown(wait=True)
