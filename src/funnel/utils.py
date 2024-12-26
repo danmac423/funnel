@@ -48,7 +48,6 @@ def directory_handler_factory(directory: str):
     return handler
 
 
-@staticmethod
 def load_config(file_path: str) -> dict:
     """
     Load server configuration from a YAML file.
