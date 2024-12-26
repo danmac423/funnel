@@ -30,6 +30,22 @@ class HTTPServer:
         )
         self._running = False
 
+        self._mount_directories(config)
+
+        signal.signal(signal.SIGINT, self._handle_signal)
+        signal.signal(signal.SIGTERM, self._handle_signal)
+
+    def _handle_signal(self, sig, _) -> None:
+        """
+        Handle a signal to stop the server.
+        """
+        print(f"\nReceived signal {sig}. Stopping server...")
+        self._shutdown()
+
+    def _mount_directories(self, config):
+        """
+        Mount directries given in cofing file.
+        """
         for mount in config.get("mounted_directories", []):
             base_path = mount["path"].rstrip("/")
             root_directory = mount["directory"]
@@ -55,16 +71,6 @@ class HTTPServer:
                             f"{current_dir}/{file}"
                         ),
                     )
-
-        signal.signal(signal.SIGINT, self._handle_signal)
-        signal.signal(signal.SIGTERM, self._handle_signal)
-
-    def _handle_signal(self, sig, _) -> None:
-        """
-        Handle a signal to stop the server.
-        """
-        print(f"\nReceived signal {sig}. Stopping server...")
-        self._shutdown()
 
     def start(self) -> None:
         """
