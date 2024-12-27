@@ -1,106 +1,191 @@
 import pytest
 import jwt
+import json
 import base64
+import datetime
 from funnel.auth import Auth
-from unittest.mock import patch
+from funnel.user_source import JsonUserSource
+from funnel.exceptions import UnauthorizedError
+
+USER_DATA = {"users": [{"username": "test_user", "password": "test_pass"}]}
+
+@pytest.fixture
+def user_source(tmp_path):
+    """Fixture to create a temporary JSON file with user data."""
+    file_path = tmp_path / "users.json"
+    file_path.write_text(json.dumps(USER_DATA))
+    return JsonUserSource(file_path)
+
+@pytest.fixture
+def auth(user_source):
+    """Fixture to create an Auth instance."""
+    return Auth(user_source)
 
 
-def test_generate_token():
+def test_configure_user_source(auth, mocker):
+    mock_source = mocker.MagicMock()
+    auth.configure_user_source(mock_source)
+    assert auth.user_source == mock_source
+
+def test_generate_token(auth):
     payload = {"username": "test_user"}
-    token = Auth.generate_token(payload)
-    assert isinstance(token, str)
-
+    token = auth.generate_token(payload)
     decoded = jwt.decode(token, Auth.SECRET_KEY, algorithms=["HS256"])
-    assert decoded["username"] == payload["username"]
+    assert decoded["username"] == "test_user"
     assert "exp" in decoded
     assert "iat" in decoded
 
+def test_decode_token(auth):
+    payload = {"username": "test_user", "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)}
+    token = jwt.encode(payload, Auth.SECRET_KEY, algorithm="HS256")
+    decoded = auth.decode_token(token)
+    assert decoded["username"] == "test_user"
 
-def test_verify_token():
-    payload = {"username": "john_doe"}
-    token = Auth.generate_token(payload)
-    decoded_payload = Auth.verify_token(token)
-    assert decoded_payload is not None
-    assert isinstance(decoded_payload, dict)
-    assert len(decoded_payload) == 3
-    assert decoded_payload["username"] == payload["username"]
-    assert isinstance(decoded_payload["exp"], int)
-    assert isinstance(decoded_payload["iat"], int)
+def test_decode_token_expired(auth):
+    payload = {"username": "testuser", "exp": datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1)}
+    token = jwt.encode(payload, Auth.SECRET_KEY, algorithm="HS256")
+    with pytest.raises(ValueError, match="Token has expired. Please log in again."):
+        auth.decode_token(token)
 
+def test_decode_token_invalid(auth):
+    invalid_token = "invalid_token"
+    with pytest.raises(ValueError, match="Invalid token. Please log in again."):
+        auth.decode_token(invalid_token)
 
-def test_verify_token_expired():
-    payload = {"username": "john_doe"}
-    token = Auth.generate_token(payload, expiration_hours=-1)
-    with pytest.raises(ValueError) as e:
-        Auth.verify_token(token)
-    assert str(e.value) == "Token has expired. Please log in again."
+def test_authenticate_user_bearer(auth):
+    payload = {"username": "test_user", "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)}
+    token = jwt.encode(payload, Auth.SECRET_KEY, algorithm="HS256")
+    auth.authenticate_user_bearer(token)
 
+def test_authenticate_user_bearer_invalid(auth):
+    token = jwt.encode({"username": "unknown_user"}, Auth.SECRET_KEY, algorithm="HS256")
+    with pytest.raises(ValueError, match="User not found"):
+        auth.authenticate_user_bearer(token)
 
-def test_verify_token_invalid():
-    payload = {"username": "john_doe"}
-    token = Auth.generate_token(payload)
-    token = token + "invalid"
-    with pytest.raises(ValueError) as e:
-        Auth.verify_token(token)
-    assert str(e.value) == "Invalid token. Please log in again."
+def test_authenticate_user_basic(auth):
+    credentials = base64.b64encode(b"test_user:test_pass").decode("utf-8")
+    auth.authenticate_user_basic(credentials)
 
+def test_authenticate_user_basic_invalid(auth):
+    credentials = base64.b64encode(b"test_user:wrong_pass").decode("utf-8")
+    with pytest.raises(ValueError, match="Invalid credentials"):
+        auth.authenticate_user_basic(credentials)
 
-@patch("funnel.logging_helper.get_user_from_file")
-def test_authenticate_user_bearer(mock_get_user):
-    mock_get_user.return_value = {"username": "john_doe"}
+def test_authenticate_decorator_bearer(auth, mocker):
+    request = mocker.MagicMock()
+    token = jwt.encode({"username": "test_user"}, Auth.SECRET_KEY, algorithm="HS256")
+    request.headers = {"Authorization": f"Bearer {token}"}
 
-    payload = {"username": "john_doe"}
-    token = Auth.generate_token(payload, expiration_hours=1)
+    @auth.authenticate("Bearer")
+    def protected_route(req):
+        return "Access granted"
 
-    user = Auth.authenticate_user_bearer(token, "users.json")
-    assert user["username"] == payload["username"]
+    assert protected_route(request) == "Access granted"
 
+def test_authenticate_decorator_bearer_invalid_header(auth, mocker):
+    request = mocker.MagicMock()
+    request.headers = {"Authorization": f"Invalid token_example"}
 
-@patch("funnel.logging_helper.get_user_from_file")
-def test_authenticate_user_bearer_user_not_found(mock_get_user):
-    mock_get_user.return_value = None
+    @auth.authenticate("Bearer")
+    def protected_route(req):
+       return "Access granted"
 
-    payload = {"username": "unknown_user"}
-    token = Auth.generate_token(payload, expiration_hours=1)
-
-    with pytest.raises(ValueError) as e:
-        Auth.authenticate_user_bearer(token, "users.json")
-    assert str(e.value) == "User not found"
-
-
-@patch("funnel.logging_helper.get_user_from_file")
-def test_authenticate_user_basic(mock_get_user):
-    mock_get_user.retun_value = {
-        "username": "john_doe", "password": "admin123"
-    }
-
-    auth_header = "Basic " + base64.b64encode(
-        b"john_doe:admin123").decode("utf-8")
-    user = Auth.authenticate_user_basic(auth_header, "users.json")
-    assert user["username"] == "john_doe"
+    with pytest.raises(UnauthorizedError, match="Unauthorized: Missing Bearer Auth header"):
+        protected_route(request)
 
 
-@patch("funnel.logging_helper.get_user_from_file")
-def test_authenticate_user_basic_wrong_credentials(mock_get_user):
-    mock_get_user.retun_value = {
-        "username": "john_doe", "password": "admin123"
-    }
+def test_authenticate_decorator_bearer_missing_token(auth, mocker):
+    request = mocker.MagicMock()
+    request.headers = {"Authorization": "Bearer "}
 
-    auth_header = "Basic " + base64.b64encode(
-        b"john_doe:wrong_pass").decode("utf-8")
-    with pytest.raises(ValueError) as e:
-        Auth.authenticate_user_basic(auth_header, "users.json")
-    assert str(e.value) == "Invalid Basic Auth header: Invalid credentials"
+    @auth.authenticate("Bearer")
+    def protected_route(req):
+        return "Access granted"
+
+    with pytest.raises(UnauthorizedError, match="Unauthorized: Missing or invalid token"):
+        protected_route(request)
+
+def test_authenticate_decorator_bearer_error(auth, mocker):
+    request = mocker.MagicMock()
+    request.headers = {"Authorization": "Bearer invalid_token"}
+
+    mocker.patch.object(auth, "authenticate_user_bearer", side_effect=ValueError("Invalid user"))
+
+    @auth.authenticate("Bearer")
+    def protected_route(req):
+        return "Access granted"
+
+    with pytest.raises(UnauthorizedError, match="Authorization failed: Invalid user"):
+        protected_route(request)
+
+def test_authenticate_decorator_basic(auth, mocker):
+    request = mocker.MagicMock()
+    credentials = base64.b64encode(b"test_user:test_pass").decode("utf-8")
+    request.headers = {"Authorization": f"Basic {credentials}"}
+
+    auth.user_source.get_user = mocker.MagicMock(return_value=USER_DATA["users"][0])
+
+    @auth.authenticate("Basic")
+    def protected_route(req):
+        return "Access granted"
+
+    assert protected_route(request) == "Access granted"
+
+def test_authenticate_decorator_basic_invalid_header(auth, mocker):
+    request = mocker.MagicMock()
+    request.headers = {"Authorization": f"Invalid token_example"}
+
+    @auth.authenticate("Basic")
+    def protected_route(req):
+       return "Access granted"
+
+    with pytest.raises(UnauthorizedError, match="Unauthorized: Missing Basic Auth header"):
+        protected_route(request)
 
 
-@patch("funnel.logging_helper.get_user_from_file")
-def test_authenticate_user_basic_user_not_found(mock_get_user):
-    mock_get_user.retun_value = {
-        "username": "john_doe", "password": "admin123"
-    }
+def test_authenticate_decorator_basic_error(auth, mocker):
+    request = mocker.MagicMock()
+    request.headers = {"Authorization": "Basic invalid_credentials"}
 
-    auth_header = "Basic " + base64.b64encode(
-        b"wrong_user:wrong_pass").decode("utf-8")
-    with pytest.raises(ValueError) as e:
-        Auth.authenticate_user_basic(auth_header, "users.json")
-    assert str(e.value) == "Invalid Basic Auth header: User not found"
+    mocker.patch.object(auth, "authenticate_user_basic", side_effect=ValueError("Invalid credentials"))
+
+    @auth.authenticate("Basic")
+    def protected_route(req):
+        return "Access granted"
+
+    with pytest.raises(UnauthorizedError, match="Authorization failed: Invalid credentials"):
+        protected_route(request)
+
+
+def test_authenticate_decorator_no_header(auth, mocker):
+    request = mocker.MagicMock()
+    request.headers = {}
+
+    @auth.authenticate("Bearer")
+    def protected_route(req):
+        return "Access granted"
+
+    with pytest.raises(UnauthorizedError, match="Unauthorized: Missing Auth header"):
+        protected_route(request)
+
+
+def test_authenticate_no_user_source(mocker):
+    auth = Auth()
+
+    request = mocker.MagicMock()
+    request.headers = {"Authorization": "Bearer some_token"}
+
+    @auth.authenticate("Bearer")
+    def protected_route(req):
+        return "Access granted"
+
+    with pytest.raises(UnauthorizedError, match="User source not configured"):
+        protected_route(request)
+
+
+
+
+
+
+
+

@@ -14,7 +14,7 @@ class JsonUserSource(UserSource):
 
     def get_user(self, username):
         with open(self.file_path, "r") as f:
-            users = json.load(f).get("users")
+            users = json.load(f).get("users", [])
         for user in users:
             if user["username"] == username:
                 return user

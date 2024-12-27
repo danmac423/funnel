@@ -12,18 +12,6 @@ auth.configure_user_source(JsonUserSource("users.json"))
 
 server = HTTPServer(host="127.0.0.1", port=8000)
 
-SECRET_KEY = "abc123"
-
-
-def generate_test_token():
-    now = datetime.now(timezone.utc)
-    payload = {
-        "username": "john_doe",
-        "password": "admin123",
-        "exp": now + timedelta(hours=1),
-        "iat": now,
-    }
-    return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
 
 @server.route("/login", methods=["POST"])
@@ -62,7 +50,16 @@ def about(request):
 
 
 
-@server.route("/protected", methods=["GET"])
+@server.route("/protected_bearer", methods=["GET"])
+@auth.authenticate(type="Bearer")
+def protected_endpoint(request):
+    return Response.json(
+        200,
+        "OK",
+        {"message": "Welcome!"}
+    )
+
+@server.route("/protected_basic", methods=["GET"])
 @auth.authenticate(type="Basic")
 def protected_endpoint(request):
     return Response.json(

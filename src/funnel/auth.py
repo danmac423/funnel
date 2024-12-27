@@ -1,4 +1,5 @@
 import jwt
+import os
 import datetime
 import base64
 from functools import wraps
@@ -6,14 +7,18 @@ from funnel.user_source import UserSource
 from funnel.exceptions import UnauthorizedError
 from funnel.request import Request
 from typing import Callable
+from dotenv import load_dotenv
 
+load_dotenv()
 
 class Auth:
-    SECRET_KEY = "abc123"
-    user_source = None
+    SECRET_KEY = os.getenv("SECRET_KEY")
+
+    def __init__(self, user_source: UserSource = None):
+        self.user_source = user_source
 
     def configure_user_source(self, source: UserSource):
-        Auth.user_source = source
+        self.user_source = source
 
     @staticmethod
     def generate_token(payload: dict, expiration_hours: int = 1) -> str:
@@ -32,8 +37,7 @@ class Auth:
         payload["iat"] = now
         return jwt.encode(payload, Auth.SECRET_KEY, algorithm="HS256")
 
-    @staticmethod
-    def authenticate_user_bearer(token: str):
+    def authenticate_user_bearer(self, token: str):
         """Authenticate a user using a Bearer token.
 
         Args:
@@ -48,13 +52,12 @@ class Auth:
         payload = Auth.decode_token(token)
 
         username = payload.get("username")
-        user = Auth.user_source.get_user(username)
+        user = self.user_source.get_user(username)
 
         if not user:
             raise ValueError("User not found")
 
-    @staticmethod
-    def authenticate_user_basic(encoded_credentials: str):
+    def authenticate_user_basic(self, encoded_credentials: str):
         """Authenticate a user using Basic Auth.
 
         Args:
@@ -68,7 +71,7 @@ class Auth:
             credentials = base64.b64decode(encoded_credentials).decode("utf-8")
             username, password = credentials.split(":")
 
-            user = Auth.user_source.get_user(username)
+            user = self.user_source.get_user(username)
             if not user or password != user.get("password"):
                 raise ValueError("Invalid credentials")
 
@@ -93,8 +96,7 @@ class Auth:
         except jwt.InvalidTokenError:
             raise ValueError("Invalid token. Please log in again.")
 
-    @staticmethod
-    def authenticate(type: str = "Bearer"):
+    def authenticate(self, type: str = "Bearer"):
         """Decorator to authenticate users using Bearer or Basic Auth.
 
         Args:
@@ -104,19 +106,19 @@ class Auth:
         def decorator(func: Callable):
             @wraps(func)
             def wrapper(request: Request, *args, **kwargs):
-                if Auth.user_source is None:
+                if self.user_source is None:
                     raise UnauthorizedError("User source not configured")
 
                 auth_header = request.headers.get("Authorization")
                 if not auth_header:
                     raise UnauthorizedError(
-                        "Unauthorized: Missing or invalid token"
+                        "Unauthorized: Missing Auth header"
                     )
 
                 if type == "Bearer":
                     if not auth_header.startswith("Bearer "):
                         raise UnauthorizedError(
-                            "Unauthorized: Missing or invalid token"
+                            "Unauthorized: Missing Bearer Auth header"
                         )
 
                     token = auth_header.split(" ")[1]
@@ -126,7 +128,7 @@ class Auth:
                             "Unauthorized: Missing or invalid token"
                         )
                     try:
-                        Auth.authenticate_user_bearer(token)
+                        self.authenticate_user_bearer(token)
                     except ValueError as e:
                         raise UnauthorizedError(f"Authorization failed: {e}")
 
@@ -138,11 +140,9 @@ class Auth:
 
                     try:
                         encoded_credentials = auth_header.split(" ")[1]
-                        Auth.authenticate_user_basic(encoded_credentials)
+                        self.authenticate_user_basic(encoded_credentials)
                     except ValueError as e:
-                        raise UnauthorizedError(
-                            f"Basic authentication failed: {e}"
-                        )
+                        raise UnauthorizedError(f"Authorization failed: {e}")
 
                 return func(request, *args, **kwargs)
 
