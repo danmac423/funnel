@@ -63,5 +63,7 @@ def load_config(file_path: str) -> dict:
             return yaml.safe_load(file)
     except FileNotFoundError:
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
+    except IsADirectoryError:
+        raise IsADirectoryError(f"{file_path} is a directory")
     except yaml.YAMLError as e:
         raise ValueError(f"Error parsing YAML file: {e}")
