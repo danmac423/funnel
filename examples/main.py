@@ -2,8 +2,6 @@ from funnel.funnel import HTTPServer
 from funnel.response import Response
 from funnel.auth import Auth
 from funnel.user_source import JsonUserSource
-from datetime import datetime, timedelta, timezone
-import jwt
 
 
 
@@ -52,7 +50,7 @@ def about(request):
 
 @server.route("/protected_bearer", methods=["GET"])
 @auth.authenticate(type="Bearer")
-def protected_endpoint(request):
+def protected_endpoint_bearer(request):
     return Response.json(
         200,
         "OK",
@@ -61,7 +59,7 @@ def protected_endpoint(request):
 
 @server.route("/protected_basic", methods=["GET"])
 @auth.authenticate(type="Basic")
-def protected_endpoint(request):
+def protected_endpoint_basic(request):
     return Response.json(
         200,
         "OK",

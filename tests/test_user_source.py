@@ -7,7 +7,9 @@ def test_usersource_interface():
     class TestSource(UserSource):
         pass
 
-    with pytest.raises(TypeError, match="Can't instantiate abstract class TestSource"):
+    with pytest.raises(
+        TypeError, match="Can't instantiate abstract class TestSource"
+    ):
         TestSource()
 
 
