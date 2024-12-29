@@ -29,7 +29,7 @@ class Response:
         status_code: int = 200,
         reason: str = "OK",
         headers: Optional[dict[str, str]] = None,
-        body: Optional[str] = None,
+        body: Optional[str | bytes] = None,
     ):
         self.status_code = status_code
         self.reason = reason
@@ -57,12 +57,18 @@ class Response:
             "Content-Length", str(len(self.body) if self.body else 0)
         )
 
+        body_content = (
+            self.body.decode("utf-8")
+            if isinstance(self.body, bytes)
+            else self.body or ""
+        )
+
         return (
             f"HTTP/1.1 {self.status_code} {self.reason}\r\n"
             + "\r\n".join(
                 f"{key}: {value}" for key, value in self.headers.items()
             )
-            + f"\r\n\r\n{self.body}"
+            + f"\r\n\r\n{body_content}"
         )
 
     @classmethod

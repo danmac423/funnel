@@ -46,16 +46,23 @@ class HTTPServer:
         """
         Mount directries given in cofing file.
         """
+        mount: dict
         for mount in config.get("mounted_directories", []):
-            base_path = mount["path"].rstrip("/")
-            root_directory = mount["directory"]
+            base_path = mount.get("path")
+            root_directory = mount.get("directory")
+
+            if not base_path or not root_directory:
+                raise ValueError(
+                    "Each mount must specify 'path' and 'directory'."
+                )
+
+            base_path = os.path.normpath(base_path)
+            root_directory = os.path.abspath(root_directory)
 
             for current_dir, sub_dirs, files in os.walk(root_directory):
                 relative_path = os.path.relpath(current_dir, root_directory)
-                if relative_path == ".":
-                    relative_path = ""
 
-                url_path = f"{base_path}/{relative_path}".replace("//", "/")
+                url_path = os.path.normpath(f"{base_path}/{relative_path}")
                 self.router._add_route(
                     path=url_path,
                     methods=["GET"],
@@ -63,12 +70,12 @@ class HTTPServer:
                 )
 
                 for file in files:
-                    file_url = f"{url_path}{file}"
+                    file_path = os.path.normpath(f"{url_path}/{file}")
                     self.router._add_route(
-                        path=file_url,
+                        path=file_path,
                         methods=["GET"],
                         handler=directory_handler_factory(
-                            f"{current_dir}/{file}"
+                            os.path.join(current_dir, file)
                         ),
                     )
 

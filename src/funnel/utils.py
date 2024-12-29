@@ -7,42 +7,66 @@ from funnel.exceptions import NotFoundError
 
 def directory_handler_factory(directory: str):
     """
-    Create a handler for serving files from a directory.
+    Create a handler for serving files and directories.
 
     Args:
-        directory (str): The directory to serve files from.
+        directory (str): The directory or file to serve.
 
     Returns:
         Callable: A handler function.
     """
 
     def handler(request):
-        requested_path = directory
-        if os.path.isdir(requested_path):
-            entries = os.listdir(requested_path)
-            links = [
-                f'<li><a href="{entry}">{entry}</a></li>'
-                for entry in sorted(entries)
-            ]
+        normalized_path = os.path.normpath(directory)
+
+        if os.path.isdir(normalized_path):
+            entries = os.listdir(normalized_path)
+            links = []
+            for entry in sorted(entries):
+                entry_path = os.path.normpath(
+                    os.path.join(request.path, entry)
+                )
+                links.append(f'<li><a href="{entry_path}">{entry}</a></li>')
             html_content = (
-                f"<html><body><h1>Index of {requested_path}</h1>"
+                f"<html><body><h1>Index of {normalized_path}</h1>"
                 f"<ul>{''.join(links)}</ul></body></html>"
             )
             return Response.html(
                 status_code=200, reason="OK", html_content=html_content
             )
-        elif os.path.isfile(requested_path):
-            with open(requested_path, "rb") as file:
-                content = file.read()
-            return Response(
-                status_code=200,
-                reason="OK",
-                headers={"Content-Type": "application/octet-stream"},
-                body=content,
-            )
+
+        elif os.path.isfile(normalized_path):
+            try:
+                with open(normalized_path, "rb") as file:
+                    content = file.read()
+                content_type = (
+                    "application/octet-stream"  # Fallback content type
+                )
+
+                extension = os.path.splitext(normalized_path)[1]
+                if extension in {".html", ".htm"}:
+                    content_type = "text/html"
+                elif extension == ".txt":
+                    content_type = "text/plain"
+                elif extension in {".jpg", ".jpeg"}:
+                    content_type = "image/jpeg"
+                elif extension == ".png":
+                    content_type = "image/png"
+
+                return Response(
+                    status_code=200,
+                    reason="OK",
+                    headers={"Content-Type": content_type},
+                    body=content,
+                )
+            except Exception as e:
+                raise NotFoundError(
+                    f"Error reading file: {normalized_path}"
+                ) from e
+
         else:
             raise NotFoundError(
-                f"File or directory not found: {requested_path}"
+                f"File or directory not found: {normalized_path}"
             )
 
     return handler

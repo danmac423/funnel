@@ -3,6 +3,6 @@ port: 8080
 max_workers: 10
 mounted_directories:
   - path: "/static"
-    directory: "/home/bilb/Desktop/studia/sem5/PSI/http-server-psi-z33/src/funnel"
-  - path: "/uploads"
-    directory: "/home/bilb/Desktop/studia/sem5/PSI/http-server-psi-z33/examples"
+    directory: "./src/funnel"
+  # - path: "/uploads"
+  #   directory: "./src/funnel"
