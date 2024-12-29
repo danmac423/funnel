@@ -2,9 +2,11 @@
 This module provides a class to represent and parse an HTTP request.
 """
 
-from typing import Optional
 import urllib.parse
 import json
+import os
+
+from typing import Optional
 
 from funnel.exceptions import BadRequestError
 
@@ -59,7 +61,9 @@ class Request:
         if not lines or len(lines[0].split(" ")) < 3:
             raise BadRequestError("Invalid request line.")
         method, path, protocol = lines[0].split(" ")
-        return method, path, protocol
+
+        normalized_path = os.path.normpath(path)
+        return method, normalized_path, protocol
 
     def _parse_headers(self) -> dict[str, str]:
         """
@@ -167,10 +171,13 @@ class Request:
         try:
             if content_type == "application/json" and self.body:
                 return json.loads(self.body)
-            elif (content_type == "application/x-www-form-urlencoded"
-                  and self.body):
+            elif (
+                content_type == "application/x-www-form-urlencoded"
+                and self.body
+            ):
                 return dict(
-                    urllib.parse.parse_qsl(self.body, strict_parsing=True))
+                    urllib.parse.parse_qsl(self.body, strict_parsing=True)
+                )
             return self.body
         except json.JSONDecodeError as e:
             raise BadRequestError(f"Invalid JSON in request body: {str(e)}")
