@@ -14,6 +14,20 @@ class JsonUserSource(UserSource):
         self.file_path = file_path
 
     def get_user(self, username: str) -> Optional[dict]:
+        """Get user data from a JSON file.
+
+        Args:
+            username (str): Username to search for.
+
+        Raises:
+            FileNotFoundError: JSON file not found.
+            ValueError: Invalid JSON format in the file.
+            ValueError: Invalid data format in the file.
+            ValueError: Invalid user format in the file.
+
+        Returns:
+            Optional[dict]: User data if found, None otherwise.
+        """
         try:
             with open(self.file_path, "r") as f:
                 data = json.load(f)
