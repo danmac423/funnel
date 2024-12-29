@@ -92,14 +92,20 @@ class HTTPServer:
         ) as server_socket:
             server_socket.bind((self.host, self.port))
             server_socket.listen(256)
+            server_socket.settimeout(1)
             print(f"Server is running on http://{self.host}:{self.port}")
 
             try:
                 while self._running:
-                    client_socket, client_address = server_socket.accept()
-                    print(f"Accepted connection from {client_address}")
+                    try:
+                        client_socket, client_address = server_socket.accept()
+                        print(f"Accepted connection from {client_address}")
 
-                    self.executor.submit(self._handle_request, client_socket)
+                        self.executor.submit(
+                            self._handle_request, client_socket
+                        )
+                    except socket.timeout:
+                        continue
             except Exception as e:
                 print(f"Server error: {e}")
             finally:
@@ -110,6 +116,8 @@ class HTTPServer:
         """
         Shutdown the server, ensuring all threads complete.
         """
+        if self._shutdown_called:
+            return
         self._shutdown_called = True
         self._running = False
         print("Shutting down server and waiting for all tasks to complete...")
