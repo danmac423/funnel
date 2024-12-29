@@ -18,6 +18,11 @@ def login(request):
     username = credentials.get("username")
     password = credentials.get("password")
 
+    if auth.user_source is None:
+        return Response.json(500, "Internal Server Error", {
+            "error": "User source not configured"
+        })
+    
     user = auth.user_source.get_user(username)
     if not user or password != user["password"]:
         return Response.json(401, "Unauthorized", {

@@ -14,8 +14,8 @@ load_dotenv()
 class Auth:
     SECRET_KEY = os.getenv("SECRET_KEY")
 
-    def __init__(self, user_source: UserSource = None):
-        self.user_source = user_source
+    def __init__(self):
+        self.user_source = None
 
     def configure_user_source(self, source: UserSource):
         self.user_source = source
@@ -52,6 +52,10 @@ class Auth:
         payload = Auth.decode_token(token)
 
         username = payload.get("username")
+
+        if not self.user_source:
+            raise AttributeError("User source not configured")
+
         user = self.user_source.get_user(username)
 
         if not user:
@@ -70,13 +74,16 @@ class Auth:
         try:
             credentials = base64.b64decode(encoded_credentials).decode("utf-8")
             username, password = credentials.split(":")
-
-            user = self.user_source.get_user(username)
-            if not user or password != user.get("password"):
-                raise ValueError("Invalid credentials")
-
         except Exception as e:
-            raise ValueError(f"Invalid Basic Auth header: {e}")
+            raise ValueError(f"Invalid credentials: {e}")
+
+        if not self.user_source:
+            raise AttributeError("User source not configured")
+
+        user = self.user_source.get_user(username)
+        if not user or password != user.get("password"):
+            raise ValueError("Invalid credentials")
+
 
     @staticmethod
     def decode_token(token: str) -> dict:
@@ -106,8 +113,8 @@ class Auth:
         def decorator(func: Callable):
             @wraps(func)
             def wrapper(request: Request, *args, **kwargs):
-                if self.user_source is None:
-                    raise UnauthorizedError("User source not configured")
+                if not self.user_source:
+                    raise AttributeError("User source not configured")
 
                 auth_header = request.headers.get("Authorization")
                 if not auth_header:

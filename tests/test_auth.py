@@ -16,16 +16,20 @@ def user_source(tmp_path):
     file_path.write_text(json.dumps(USER_DATA))
     return JsonUserSource(file_path)
 
+
 @pytest.fixture
 def auth(user_source):
     """Fixture to create an Auth instance."""
-    return Auth(user_source)
+    auth = Auth()
+    auth.configure_user_source(user_source)
+    return auth
 
 
 def test_configure_user_source(auth, mocker):
     mock_source = mocker.MagicMock()
     auth.configure_user_source(mock_source)
     assert auth.user_source == mock_source
+
 
 def test_generate_token(auth):
     payload = {"username": "test_user"}
@@ -34,6 +38,7 @@ def test_generate_token(auth):
     assert decoded["username"] == "test_user"
     assert "exp" in decoded
     assert "iat" in decoded
+
 
 def test_decode_token(auth):
     payload = {
@@ -44,6 +49,7 @@ def test_decode_token(auth):
     token = jwt.encode(payload, Auth.SECRET_KEY, algorithm="HS256")
     decoded = auth.decode_token(token)
     assert decoded["username"] == "test_user"
+
 
 def test_decode_token_expired(auth):
     payload = {
@@ -57,12 +63,14 @@ def test_decode_token_expired(auth):
     ):
         auth.decode_token(token)
 
+
 def test_decode_token_invalid(auth):
     invalid_token = "invalid_token"
     with pytest.raises(
         ValueError, match="Invalid token. Please log in again."
     ):
         auth.decode_token(invalid_token)
+
 
 def test_authenticate_user_bearer(auth):
     payload = {
@@ -73,6 +81,7 @@ def test_authenticate_user_bearer(auth):
     token = jwt.encode(payload, Auth.SECRET_KEY, algorithm="HS256")
     auth.authenticate_user_bearer(token)
 
+
 def test_authenticate_user_bearer_invalid(auth):
     token = jwt.encode({
         "username": "unknown_user"
@@ -80,14 +89,36 @@ def test_authenticate_user_bearer_invalid(auth):
     with pytest.raises(ValueError, match="User not found"):
         auth.authenticate_user_bearer(token)
 
+
+def test_authenticate_user_bearer_no_source(auth):
+    payload = {
+        "username": "test_user",
+        "exp": datetime.datetime.now(datetime.timezone.utc) +
+            datetime.timedelta(hours=1)
+        }
+    token = jwt.encode(payload, Auth.SECRET_KEY, algorithm="HS256")
+    auth.user_source = None
+    with pytest.raises(AttributeError, match="User source not configured"):
+        auth.authenticate_user_bearer(token)
+
+
 def test_authenticate_user_basic(auth):
     credentials = base64.b64encode(b"test_user:test_pass").decode("utf-8")
     auth.authenticate_user_basic(credentials)
+
 
 def test_authenticate_user_basic_invalid(auth):
     credentials = base64.b64encode(b"test_user:wrong_pass").decode("utf-8")
     with pytest.raises(ValueError, match="Invalid credentials"):
         auth.authenticate_user_basic(credentials)
+
+
+def test_authenticate_user_basic_no_source(auth):
+    credentials = base64.b64encode(b"test_user:test_pass").decode("utf-8")
+    auth.user_source = None
+    with pytest.raises(AttributeError, match="User source not configured"):
+        auth.authenticate_user_basic(credentials)
+
 
 def test_authenticate_decorator_bearer(auth, mocker):
     request = mocker.MagicMock()
@@ -101,6 +132,7 @@ def test_authenticate_decorator_bearer(auth, mocker):
         return "Access granted"
 
     assert protected_route(request) == "Access granted"
+
 
 def test_authenticate_decorator_bearer_invalid_header(auth, mocker):
     request = mocker.MagicMock()
@@ -129,6 +161,7 @@ def test_authenticate_decorator_bearer_missing_token(auth, mocker):
         ):
         protected_route(request)
 
+
 def test_authenticate_decorator_bearer_error(auth, mocker):
     request = mocker.MagicMock()
     request.headers = {"Authorization": "Bearer invalid_token"}
@@ -148,6 +181,7 @@ def test_authenticate_decorator_bearer_error(auth, mocker):
         ):
         protected_route(request)
 
+
 def test_authenticate_decorator_basic(auth, mocker):
     request = mocker.MagicMock()
     credentials = base64.b64encode(b"test_user:test_pass").decode("utf-8")
@@ -162,6 +196,7 @@ def test_authenticate_decorator_basic(auth, mocker):
         return "Access granted"
 
     assert protected_route(request) == "Access granted"
+
 
 def test_authenticate_decorator_basic_invalid_header(auth, mocker):
     request = mocker.MagicMock()
@@ -221,13 +256,5 @@ def test_authenticate_no_user_source(mocker):
     def protected_route(req):
         return "Access granted"
 
-    with pytest.raises(UnauthorizedError, match="User source not configured"):
+    with pytest.raises(AttributeError, match="User source not configured"):
         protected_route(request)
-
-
-
-
-
-
-
-
