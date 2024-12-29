@@ -2,6 +2,8 @@
 This module contains the Router class to manage routes and handlers.
 """
 
+import os
+
 from typing import Callable, Optional
 from dataclasses import dataclass
 
@@ -54,14 +56,18 @@ class Router:
             ValueError: If route already exists for the host, method, and path
         """
 
-        route_key = RouteKey(host=host, path=path)
+        normalized_path = os.path.normpath(path)
+
+        route_key = RouteKey(host=host, path=normalized_path)
 
         if route_key not in self.routes:
             self.routes[route_key] = {}
 
         for method in methods:
             if method in self.routes[route_key]:
-                raise ValueError(f"Route already exists for {method} {path}")
+                raise ValueError(
+                    f"Route already exists for {method} {normalized_path}"
+                )
             self.routes[route_key][method] = handler
 
     def route(
