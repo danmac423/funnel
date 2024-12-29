@@ -167,13 +167,10 @@ class Request:
         try:
             if content_type == "application/json" and self.body:
                 return json.loads(self.body)
-            elif (
-                content_type == "application/x-www-form-urlencoded"
-                and self.body
-            ):
+            elif (content_type == "application/x-www-form-urlencoded"
+                  and self.body):
                 return dict(
-                    urllib.parse.parse_qsl(self.body, strict_parsing=True)
-                )
+                    urllib.parse.parse_qsl(self.body, strict_parsing=True))
             return self.body
         except json.JSONDecodeError as e:
             raise BadRequestError(f"Invalid JSON in request body: {str(e)}")
