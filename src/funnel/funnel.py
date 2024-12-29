@@ -1,6 +1,7 @@
 import socket
 import signal
 import sys
+import os
 
 from typing import Callable, Optional
 from concurrent.futures import ThreadPoolExecutor
@@ -8,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from funnel.request import Request
 from funnel.router import Router
 from funnel.exceptions import FunnelError
+from funnel.utils import load_config, directory_handler_factory
 
 
 class HTTPServer:
@@ -16,13 +18,20 @@ class HTTPServer:
     routing, and request handling.
     """
 
-    def __init__(self, host: str, port: int, max_workers: int = 10):
-        self.host = host
-        self.port = port
+    def __init__(self, config_path: str):
+        config = load_config(config_path)
+
+        self.host = config.get("host", "127.0.0.1")
+        self.port = config.get("port", 8080)
+
         self.router = Router()
-        self.executor = ThreadPoolExecutor(max_workers=max_workers)
+        self.executor = ThreadPoolExecutor(
+            max_workers=config.get("max_workers", 10)
+        )
         self._running = False
         self._shutdown_called = False
+
+        self._mount_directories(config)
 
         signal.signal(signal.SIGINT, self._handle_signal)
         signal.signal(signal.SIGTERM, self._handle_signal)
@@ -33,6 +42,43 @@ class HTTPServer:
         """
         print(f"\nReceived signal {sig}. Stopping server...")
         self._shutdown()
+
+    def _mount_directories(self, config):
+        """
+        Mount directries given in cofing file.
+        """
+        mount: dict
+        for mount in config.get("mounted_directories", []):
+            base_path = mount.get("path")
+            root_directory = mount.get("directory")
+
+            if not base_path or not root_directory:
+                raise ValueError(
+                    "Each mount must specify 'path' and 'directory'."
+                )
+
+            base_path = os.path.normpath(base_path)
+            root_directory = os.path.abspath(root_directory)
+
+            for current_dir, sub_dirs, files in os.walk(root_directory):
+                relative_path = os.path.relpath(current_dir, root_directory)
+
+                url_path = os.path.normpath(f"{base_path}/{relative_path}")
+                self.router._add_route(
+                    path=url_path,
+                    methods=["GET"],
+                    handler=directory_handler_factory(current_dir),
+                )
+
+                for file in files:
+                    file_path = os.path.normpath(f"{url_path}/{file}")
+                    self.router._add_route(
+                        path=file_path,
+                        methods=["GET"],
+                        handler=directory_handler_factory(
+                            os.path.join(current_dir, file)
+                        ),
+                    )
 
     def start(self) -> None:
         """
