@@ -8,7 +8,7 @@ from funnel.user_source import JsonUserSource
 auth = Auth()
 auth.configure_user_source(JsonUserSource("users.json"))
 
-server = HTTPServer(host="127.0.0.1", port=8000)
+server = HTTPServer("./config/server_config.yaml")
 
 
 
