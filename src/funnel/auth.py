@@ -18,6 +18,11 @@ class Auth:
         self.user_source = None
 
     def configure_user_source(self, source: UserSource):
+        """Configure the user source for authentication.
+
+        Args:
+            source (UserSource): User source object
+        """
         self.user_source = source
 
     @staticmethod
@@ -45,6 +50,7 @@ class Auth:
 
         Raises:
             ValueError: User not found
+            AttributeError: User source not configured
 
         Returns:
             dict: User data
@@ -65,8 +71,11 @@ class Auth:
         """Authenticate a user using Basic Auth.
 
         Args:
-            auth_header (str): Authorization header
-            user_file (str): Path to the file containing user data
+            encoded_credentials (str): Base64 encoded credentials
+
+        Raises:
+            ValueError: Invalid credentials
+            AttributeError: User source not configured
 
         Returns:
             dict: User data
@@ -92,6 +101,9 @@ class Auth:
         Args:
             token (str): JWT token
 
+        Raises:
+            ValueError: Token has expired or is invalid
+
         Returns:
             dict: Decoded payload
         """
@@ -113,6 +125,14 @@ class Auth:
         def decorator(func: Callable):
             @wraps(func)
             def wrapper(request: Request, *args, **kwargs):
+                """Wrapper function to authenticate users.
+
+                Args:
+                    request (Request): HTTP request object
+
+                Returns:
+                    Any: Response from the decorated function
+                """
                 if not self.user_source:
                     raise AttributeError("User source not configured")
 
