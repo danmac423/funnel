@@ -4,7 +4,7 @@ import datetime
 import base64
 from functools import wraps
 from funnel.user_source import UserSource
-from funnel.exceptions import UnauthorizedError
+from funnel.exceptions import UnauthorizedError, BadRequestError
 from funnel.request import Request
 from typing import Callable
 from dotenv import load_dotenv
@@ -138,14 +138,15 @@ class Auth:
 
                 auth_header = request.headers.get("Authorization")
                 if not auth_header:
-                    raise UnauthorizedError(
-                        "Unauthorized: Missing Auth header"
+                    raise BadRequestError(
+                        "BadRequestError: Missing or invalid Auth header"
                     )
 
                 if type == "Bearer":
                     if not auth_header.startswith("Bearer "):
-                        raise UnauthorizedError(
-                            "Unauthorized: Missing Bearer Auth header"
+                        raise BadRequestError(
+                            "BadRequestError: "
+                            "Missing or invalid Bearer Auth header"
                         )
 
                     token = auth_header.split(" ")[1]
@@ -161,8 +162,9 @@ class Auth:
 
                 elif type == "Basic":
                     if not auth_header.startswith("Basic "):
-                        raise UnauthorizedError(
-                            "Unauthorized: Missing Basic Auth header"
+                        raise BadRequestError(
+                            "BadRequestError: "
+                            "Missing or invalid Basic Auth header"
                         )
 
                     try:

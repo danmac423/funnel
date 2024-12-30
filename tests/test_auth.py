@@ -5,7 +5,7 @@ import base64
 import datetime
 from funnel.auth import Auth
 from funnel.user_source import JsonUserSource
-from funnel.exceptions import UnauthorizedError
+from funnel.exceptions import UnauthorizedError, BadRequestError
 
 USER_DATA = {"users": [{"username": "test_user", "password": "test_pass"}]}
 
@@ -113,6 +113,17 @@ def test_authenticate_user_basic_invalid(auth):
         auth.authenticate_user_basic(credentials)
 
 
+def test_authenticate_user_basic_missing_colon():
+    auth = Auth()
+
+    encoded_credentials = base64.b64encode(b"usernamepassword").decode("utf-8")
+
+    with pytest.raises(
+        ValueError, match="Invalid credentials: not enough values to unpack"
+    ):
+        auth.authenticate_user_basic(encoded_credentials)
+
+
 def test_authenticate_user_basic_no_source(auth):
     credentials = base64.b64encode(b"test_user:test_pass").decode("utf-8")
     auth.user_source = None
@@ -143,7 +154,8 @@ def test_authenticate_decorator_bearer_invalid_header(auth, mocker):
        return "Access granted"
 
     with pytest.raises(
-        UnauthorizedError, match="Unauthorized: Missing Bearer Auth header"
+        BadRequestError,
+        match="BadRequestError: Missing or invalid Bearer Auth header"
         ):
         protected_route(request)
 
@@ -207,7 +219,8 @@ def test_authenticate_decorator_basic_invalid_header(auth, mocker):
        return "Access granted"
 
     with pytest.raises(
-        UnauthorizedError, match="Unauthorized: Missing Basic Auth header"
+        BadRequestError,
+        match="BadRequestError: Missing or invalid Basic Auth header"
     ):
         protected_route(request)
 
@@ -241,7 +254,8 @@ def test_authenticate_decorator_no_header(auth, mocker):
         return "Access granted"
 
     with pytest.raises(
-        UnauthorizedError, match="Unauthorized: Missing Auth header"
+        BadRequestError,
+        match="BadRequestError: Missing or invalid Auth header"
     ):
         protected_route(request)
 
