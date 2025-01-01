@@ -1,6 +1,5 @@
 import socket
 import signal
-import os
 import logging
 import threading
 
@@ -12,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from funnel.request import Request
 from funnel.router import Router
 from funnel.exceptions import FunnelError
-from funnel.utils import load_config, directory_handler_factory
+from funnel.utils import load_config, mount_directories
 
 rotating_file_handler = RotatingFileHandler(
     "logs/server.log", maxBytes=5 * 1024 * 1024
@@ -48,7 +47,7 @@ class HTTPServer:
 
         self._server_socket: socket.socket | None = None
 
-        self._mount_directories(config)
+        mount_directories(self.router, config)
 
         signal.signal(signal.SIGINT, self._handle_signal)
         signal.signal(signal.SIGTERM, self._handle_signal)
@@ -59,43 +58,6 @@ class HTTPServer:
         """
         print(f"\nReceived signal {sig}. Stopping server...")
         self.stop()
-
-    def _mount_directories(self, config):
-        """
-        Mount directries given in cofing file.
-        """
-        mount: dict
-        for mount in config.get("mounted_directories", []):
-            base_path = mount.get("path")
-            root_directory = mount.get("directory")
-
-            if not base_path or not root_directory:
-                raise ValueError(
-                    "Each mount must specify 'path' and 'directory'."
-                )
-
-            base_path = os.path.normpath(base_path)
-            root_directory = os.path.abspath(root_directory)
-
-            for current_dir, sub_dirs, files in os.walk(root_directory):
-                relative_path = os.path.relpath(current_dir, root_directory)
-
-                url_path = os.path.normpath(f"{base_path}/{relative_path}")
-                self.router._add_route(
-                    path=url_path,
-                    methods=["GET"],
-                    handler=directory_handler_factory(current_dir),
-                )
-
-                for file in files:
-                    file_path = os.path.normpath(f"{url_path}/{file}")
-                    self.router._add_route(
-                        path=file_path,
-                        methods=["GET"],
-                        handler=directory_handler_factory(
-                            os.path.join(current_dir, file)
-                        ),
-                    )
 
     def start(self) -> None:
         """

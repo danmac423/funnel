@@ -5,6 +5,45 @@ from mimetypes import guess_type
 
 from funnel.response import Response
 from funnel.exceptions import NotFoundError
+from funnel.router import Router
+
+
+def mount_directories(router: Router, config: dict):
+    """
+    Mount directories as routes on the provided router.
+
+    Args:
+        router (Router): The router to configure.
+        config (dict): The configuration containing mounted directories.
+    """
+    for mount in config.get("mounted_directories", []):
+        base_path = mount.get("path")
+        root_directory = mount.get("directory")
+
+        if not base_path or not root_directory:
+            raise ValueError("Each mount must specify 'path' and 'directory'.")
+
+        base_path = os.path.normpath(base_path)
+        root_directory = os.path.abspath(root_directory)
+
+        for current_dir, sub_dirs, files in os.walk(root_directory):
+            relative_path = os.path.relpath(current_dir, root_directory)
+            url_path = os.path.normpath(f"{base_path}/{relative_path}")
+            router._add_route(
+                path=url_path,
+                methods=["GET"],
+                handler=directory_handler_factory(current_dir),
+            )
+
+            for file in files:
+                file_path = os.path.normpath(f"{url_path}/{file}")
+                router._add_route(
+                    path=file_path,
+                    methods=["GET"],
+                    handler=directory_handler_factory(
+                        os.path.join(current_dir, file)
+                    ),
+                )
 
 
 def directory_handler_factory(directory: str):
@@ -46,10 +85,16 @@ def directory_handler_factory(directory: str):
                 if not content_type:
                     content_type = "application/octet-stream"
 
+                filename = os.path.basename(normalized_path)
+                content_disposition = f'attachment; filename="{filename}"'
+
                 return Response(
                     status_code=200,
                     reason="OK",
-                    headers={"Content-Type": content_type},
+                    headers={
+                        "Content-Type": content_type,
+                        "Content-Disposition": content_disposition,
+                    },
                     body=content,
                 )
             except Exception as e:
