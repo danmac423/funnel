@@ -116,8 +116,8 @@ def test_serve_directory(tmp_path):
 
     response = serve_directory(str(subdir), "/static")
     assert response.status_code == 200
-    assert "file1.txt" in response.body
-    assert "file2.txt" in response.body
+    assert "file1.txt" in str(response.body)
+    assert "file2.txt" in str(response.body)
 
 
 def test_serve_file_valid(tmp_path):
