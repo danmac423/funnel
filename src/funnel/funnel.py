@@ -178,7 +178,10 @@ class HTTPServer:
             response = handler(request)
 
         except FunnelError as e:
-            logger.error(f"FunnelError: {e}")
+            logger.error(
+                f"FunnelError: {e.status_code} "
+                f"{e.error_reason} - {e.error_message}"
+            )
             response = e.to_http_response()
         except Exception as e:
             logger.critical(f"Unexpected error occurred: {e}", exc_info=True)
