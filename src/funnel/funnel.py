@@ -1,6 +1,5 @@
 import socket
 import signal
-import sys
 import os
 import logging
 import threading
@@ -48,7 +47,7 @@ class HTTPServer:
         self._running = threading.Event()
         self._running.set()
 
-        self._server_socket = None
+        self._server_socket: socket.socket | None = None
 
         self._mount_directories(config)
 
