@@ -134,6 +134,19 @@ def test_directory_handler_factory_png_file(tmp_path):
     assert response.body == b"png file content"
 
 
+def test_directory_handler_factory_non_standard_file(tmp_path):
+    png_file = tmp_path / "file.non-standard"
+    png_file.write_bytes(b"non-standard file content")
+
+    handler = directory_handler_factory(str(png_file))
+    request = create_mock_request(str(png_file))
+    response = handler(request)
+
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "application/octet-stream"
+    assert response.body == b"non-standard file content"
+
+
 def test_directory_handler_factory_nonexistent_path_with_request(tmp_path):
     nonexistent_path = tmp_path / "nonexistent"
     handler = directory_handler_factory(str(nonexistent_path))
@@ -155,44 +168,3 @@ def test_directory_handler_factory_file_read_error_with_request(
 
     with pytest.raises(NotFoundError, match="Error reading file:"):
         handler(request)
-
-
-# def test_handler_factory_directory(tmp_path):
-#     d = tmp_path / "sub"
-#     d.mkdir()
-#     p = d / "hello.txt"
-#     p.write_text(EMPTY_CONFIG, encoding="utf-8")
-
-#     handler = directory_handler_factory(d)
-#     response = handler(None)
-
-#     assert p.read_text(encoding="utf-8") == EMPTY_CONFIG
-#     assert response.status_code == 200
-#     assert response.headers["Content-Type"] == "text/html"
-#     assert "hello.txt" in response.body
-
-
-# def test_handler_factory_file(tmp_path):
-#     d = tmp_path / "sub"
-#     d.mkdir()
-#     p = d / "hello.txt"
-#     p.write_text(EMPTY_CONFIG, encoding="utf-8")
-
-#     handler = directory_handler_factory(p)
-#     response = handler(None)
-
-#     assert p.read_text(encoding="utf-8") == EMPTY_CONFIG
-#     assert response.status_code == 200
-#     assert response.headers["Content-Type"] == "application/octet-stream"
-
-
-# def test_handler_factory_wrong_path(tmp_path):
-#     d = tmp_path / "sub"
-#     d.mkdir()
-#     p = d / "hello.txt"
-#     p.write_text(EMPTY_CONFIG, encoding="utf-8")
-
-#     handler = directory_handler_factory(d / "wrong_file.yaml")
-#     with pytest.raises(NotFoundError) as excinfo:
-#         response = handler(None)
-#     assert "File or directory not found:" in str(excinfo.value)

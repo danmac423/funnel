@@ -43,7 +43,8 @@ def directory_handler_factory(directory: str):
                     content = file.read()
 
                 content_type, _ = guess_type(normalized_path)
-                content_type = "application/octet-stream"
+                if not content_type:
+                    content_type = "application/octet-stream"
 
                 return Response(
                     status_code=200,
