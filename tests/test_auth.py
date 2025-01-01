@@ -17,6 +17,12 @@ def user_source(tmp_path):
     return JsonUserSource(file_path)
 
 
+@pytest.fixture(autouse=True)
+def mock_secret_key(mocker):
+    """Automatically mock SECRET_KEY for all tests."""
+    mocker.patch("funnel.auth.os.getenv", return_value="mocked_secret_key")
+
+
 @pytest.fixture
 def auth(user_source):
     """Fixture to create an Auth instance."""

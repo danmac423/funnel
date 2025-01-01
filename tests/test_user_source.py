@@ -21,6 +21,16 @@ def test_usersource_incomplete_subclass():
         IncompleteUserSource() # type: ignore
 
 
+def test_usersource_get_user_not_implemented():
+    UserSource.__abstractmethods__ = set() # type: ignore
+    source = UserSource() # type: ignore
+
+    with pytest.raises(
+        NotImplementedError,
+        match="get_user method not implemented"
+    ):
+        source.get_user("test_user")
+
 
 @pytest.fixture
 def valid_user_file(tmp_path):

@@ -6,7 +6,7 @@ class UserSource(ABC):
 
     @abstractmethod
     def get_user(self, username: str) -> Optional[dict]:
-        pass
+        raise NotImplementedError("get_user method not implemented")
 
 
 class JsonUserSource(UserSource):
