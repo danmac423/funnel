@@ -1,3 +1,7 @@
+"""
+Utility functions for Funnel.
+"""
+
 import os
 import yaml
 
@@ -20,72 +24,76 @@ def mount_directories(router: Router, config: dict):
         base_path = mount.get("path")
         root_directory = mount.get("directory")
 
-        if not base_path or not root_directory:
-            raise ValueError("Each mount must specify 'path' and 'directory'.")
+        handler = directory_handler_factory(root_directory, base_path)
 
-        base_path = os.path.normpath(base_path)
-        root_directory = os.path.abspath(root_directory)
+        router._add_route(
+            path=f"{base_path}/<path:subpath>",
+            methods=["GET"],
+            handler=handler,
+        )
 
-        for current_dir, sub_dirs, files in os.walk(root_directory):
-            relative_path = os.path.relpath(current_dir, root_directory)
-            url_path = os.path.normpath(f"{base_path}/{relative_path}")
-            router._add_route(
-                path=url_path,
-                methods=["GET"],
-                handler=directory_handler_factory(current_dir),
-            )
-
-            for file in files:
-                file_path = os.path.normpath(f"{url_path}/{file}")
-                router._add_route(
-                    path=file_path,
-                    methods=["GET"],
-                    handler=directory_handler_factory(
-                        os.path.join(current_dir, file)
-                    ),
-                )
+        router._add_route(
+            path=base_path,
+            methods=["GET"],
+            handler=handler,
+        )
 
 
-def directory_handler_factory(directory: str):
+def directory_handler_factory(base_directory: str, base_path: str):
     """
-    Create a handler for serving files and directories.
+    Create a handler for serving files and directories dynamically.
 
     Args:
-        directory (str): The directory or file to serve.
+        base_directory (str): The base directory to serve.
+        base_path (str): The base path to resolve URLs.
 
     Returns:
         Callable: A handler function.
     """
+    base_directory = os.path.abspath(base_directory)
 
     def handler(request):
-        normalized_path = os.path.normpath(directory)
+        """
+        Dynamically serve files or directories.
 
-        if os.path.isdir(normalized_path):
-            entries = os.listdir(normalized_path)
-            links = []
-            for entry in sorted(entries):
-                entry_path = os.path.normpath(
-                    os.path.join(request.path, entry)
-                )
-                links.append(f'<li><a href="{entry_path}">{entry}</a></li>')
+        Args:
+            request (Request): Incoming HTTP request.
+
+        Returns:
+            Response: HTTP response with file or directory content.
+        """
+
+        subpath = os.path.relpath(request.path, base_path).lstrip("/")
+        requested_path = os.path.join(base_directory, subpath)
+        requested_path = os.path.normpath(requested_path)
+
+        if not requested_path.startswith(base_directory):
+            raise NotFoundError("Path not found.")
+
+        if os.path.isdir(requested_path):
+            entries = os.listdir(requested_path)
+            hrefs = [
+                f'<a href="{os.path.join(request.path, entry)}">{entry}</a>'
+                for entry in sorted(entries)
+            ]
+            links = [f"<li>{href}</li>" for href in hrefs]
             html_content = (
-                f"<html><body><h1>Index of {normalized_path}</h1>"
+                f"<html><body><h1>Index of {request.path}</h1>"
                 f"<ul>{''.join(links)}</ul></body></html>"
             )
             return Response.html(
                 status_code=200, reason="OK", html_content=html_content
             )
 
-        elif os.path.isfile(normalized_path):
+        elif os.path.isfile(requested_path):
             try:
-                with open(normalized_path, "rb") as file:
+                with open(requested_path, "rb") as file:
                     content = file.read()
-
-                content_type, _ = guess_type(normalized_path)
+                content_type, _ = guess_type(requested_path)
                 if not content_type:
                     content_type = "application/octet-stream"
 
-                filename = os.path.basename(normalized_path)
+                filename = os.path.basename(requested_path)
                 content_disposition = f'attachment; filename="{filename}"'
 
                 return Response(
@@ -94,18 +102,16 @@ def directory_handler_factory(directory: str):
                     headers={
                         "Content-Type": content_type,
                         "Content-Disposition": content_disposition,
+                        "Content-Length": str(len(content)),
                     },
                     body=content,
                 )
             except Exception as e:
                 raise NotFoundError(
-                    f"Error reading file: {normalized_path}"
+                    f"Error reading file: {requested_path}"
                 ) from e
 
-        else:
-            raise NotFoundError(
-                f"File or directory not found: {normalized_path}"
-            )
+        raise NotFoundError("File or directory not found.")
 
     return handler
 

@@ -151,7 +151,7 @@ class HTTPServer:
             response = error.to_http_response()
         finally:
             logger.info(f"Sending response:  Status={response.status_code}")
-            client_socket.sendall(response.to_http().encode("utf-8"))
+            client_socket.sendall(response.to_http())
             client_socket.close()
 
     def route(

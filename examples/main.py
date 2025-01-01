@@ -4,12 +4,10 @@ from funnel.auth import Auth
 from funnel.user_source import JsonUserSource
 
 
-
 auth = Auth()
 auth.configure_user_source(JsonUserSource("users.json"))
 
 server = HTTPServer("./config/server_config.yaml")
-
 
 
 @server.route("/login", methods=["POST"])
@@ -19,15 +17,17 @@ def login(request):
     password = credentials.get("password")
 
     if auth.user_source is None:
-        return Response.json(500, "Internal Server Error", {
-            "error": "User source not configured"
-        })
-    
+        return Response.json(
+            500,
+            "Internal Server Error",
+            {"error": "User source not configured"},
+        )
+
     user = auth.user_source.get_user(username)
     if not user or password != user["password"]:
-        return Response.json(401, "Unauthorized", {
-            "error": "Invalid credentials"
-        })
+        return Response.json(
+            401, "Unauthorized", {"error": "Invalid credentials"}
+        )
 
     payload = {"username": username}
     token = auth.generate_token(payload)
@@ -52,24 +52,16 @@ def about(request):
     return Response.html(200, "OK", "<h1>About this Server</h1>")
 
 
-
 @server.route("/protected_bearer", methods=["GET"])
 @auth.authenticate(type="Bearer")
 def protected_endpoint_bearer(request):
-    return Response.json(
-        200,
-        "OK",
-        {"message": "Welcome!"}
-    )
+    return Response.json(200, "OK", {"message": "Welcome!"})
+
 
 @server.route("/protected_basic", methods=["GET"])
 @auth.authenticate(type="Basic")
 def protected_endpoint_basic(request):
-    return Response.json(
-        200,
-        "OK",
-        {"message": "Welcome!"}
-    )
+    return Response.json(200, "OK", {"message": "Welcome!"})
 
 
 @server.route("/data", methods=["GET", "POST"])
