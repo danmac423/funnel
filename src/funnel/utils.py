@@ -42,7 +42,7 @@ def directory_handler_factory(directory: str):
                 with open(normalized_path, "rb") as file:
                     content = file.read()
 
-                content_type = guess_type(normalized_path)
+                content_type, _ = guess_type(normalized_path)
                 content_type = "application/octet-stream"
 
                 return Response(
