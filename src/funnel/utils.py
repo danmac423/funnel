@@ -1,6 +1,8 @@
 import os
 import yaml
 
+from mimetypes import guess_type
+
 from funnel.response import Response
 from funnel.exceptions import NotFoundError
 
@@ -39,19 +41,9 @@ def directory_handler_factory(directory: str):
             try:
                 with open(normalized_path, "rb") as file:
                     content = file.read()
-                content_type = (
-                    "application/octet-stream"  # Fallback content type
-                )
 
-                extension = os.path.splitext(normalized_path)[1]
-                if extension in {".html", ".htm"}:
-                    content_type = "text/html"
-                elif extension == ".txt":
-                    content_type = "text/plain"
-                elif extension in {".jpg", ".jpeg"}:
-                    content_type = "image/jpeg"
-                elif extension == ".png":
-                    content_type = "image/png"
+                content_type = guess_type(normalized_path)
+                content_type = "application/octet-stream"
 
                 return Response(
                     status_code=200,
