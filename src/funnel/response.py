@@ -46,30 +46,30 @@ class Response:
         """
         self.headers[key] = value
 
-    def to_http(self) -> str:
+    def to_http(self) -> bytes:
         """
         Convert response to a HTTP response
 
         Returns:
-            str: String representation of the HTTP response
+            bytes: HTTP response
         """
         self.set_header(
             "Content-Length", str(len(self.body) if self.body else 0)
         )
 
-        body_content = (
-            self.body.decode("utf-8")
-            if isinstance(self.body, bytes)
-            else self.body or ""
-        )
-
-        return (
+        headers = (
             f"HTTP/1.1 {self.status_code} {self.reason}\r\n"
             + "\r\n".join(
                 f"{key}: {value}" for key, value in self.headers.items()
             )
-            + f"\r\n\r\n{body_content}"
-        )
+            + "\r\n\r\n"
+        ).encode("utf-8")
+
+        if isinstance(self.body, bytes):
+            return headers + self.body
+        else:
+            body_content = (self.body or "").encode("utf-8")
+            return headers + body_content
 
     @classmethod
     def json(
