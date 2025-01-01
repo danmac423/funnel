@@ -56,7 +56,8 @@ class HTTPServer:
         """
         Handle a signal to stop the server.
         """
-        print(f"\nReceived signal {sig}. Stopping server...")
+        signal_name = signal.Signals(sig).name
+        logger.info(f"Received signal {signal_name}. Stopping server...")
         self.stop()
 
     def start(self) -> None:
