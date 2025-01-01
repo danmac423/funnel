@@ -40,7 +40,6 @@ class HTTPServer:
         self.port = config.get("port", 8080)
 
         self.router = Router()
-        logger.info("Router initialized")
         self.executor = ThreadPoolExecutor(
             max_workers=config.get("max_workers", 10)
         )
@@ -157,6 +156,7 @@ class HTTPServer:
 
         Args:
             client_socket (socket.socket): The client's socket connection.
+            client_address (tuple): The client's (IP, port) address.
         """
         try:
             raw_request = client_socket.recv(1024).decode("utf-8")
@@ -164,10 +164,12 @@ class HTTPServer:
                 return
 
             request = Request(raw_request)
+            client_ip, client_port = client_socket.getpeername()
             logger.info(
                 f"Parsed request: Method={request.method}, "
                 f"Path={request.path}, "
-                f"Host={request.headers.get('Host')}"
+                f"Host={request.headers.get('Host')}, "
+                f"Client Address={client_ip}:{client_port}"
             )
 
             handler = self.router.get_handler(
