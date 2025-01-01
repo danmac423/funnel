@@ -3,10 +3,12 @@ import signal
 import sys
 import os
 import logging
-from logging.handlers import RotatingFileHandler
+import threading
 
+from logging.handlers import RotatingFileHandler
 from typing import Callable, Optional
 from concurrent.futures import ThreadPoolExecutor
+
 
 from funnel.request import Request
 from funnel.router import Router
@@ -14,20 +16,17 @@ from funnel.exceptions import FunnelError
 from funnel.utils import load_config, directory_handler_factory
 
 rotating_file_handler = RotatingFileHandler(
-    "logs/server.log",
-    maxBytes=5 * 1024 * 1024
+    "logs/server.log", maxBytes=5 * 1024 * 1024
 )
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        rotating_file_handler,
-        logging.StreamHandler()
-    ]
+    handlers=[rotating_file_handler, logging.StreamHandler()],
 )
 
 logger = logging.getLogger("HTTP Server")
+
 
 class HTTPServer:
     """
@@ -46,8 +45,10 @@ class HTTPServer:
         self.executor = ThreadPoolExecutor(
             max_workers=config.get("max_workers", 10)
         )
-        self._running = False
-        self._shutdown_called = False
+        self._running = threading.Event()
+        self._running.set()
+
+        self._server_socket = None
 
         self._mount_directories(config)
 
@@ -59,7 +60,7 @@ class HTTPServer:
         Handle a signal to stop the server.
         """
         print(f"\nReceived signal {sig}. Stopping server...")
-        self._shutdown()
+        self.stop()
 
     def _mount_directories(self, config):
         """
@@ -103,49 +104,53 @@ class HTTPServer:
         Start the HTTP server and listen for incoming requests.
         """
         logger.info(f"Starting server on {self.host}:{self.port}...")
-        self._running = True
-
-        with socket.socket(
-            socket.AF_INET, socket.SOCK_STREAM
-        ) as server_socket:
-            server_socket.bind((self.host, self.port))
-            server_socket.listen(256)
-            server_socket.settimeout(1)
-            logger.info(f"Server is running on http://{self.host}:{self.port}")
-
-            try:
-                while self._running:
-                    try:
-                        client_socket, client_address = server_socket.accept()
-                        logger.info(
-                            f"Accepted connection from {client_address}"
-                        )
-
-                        self.executor.submit(
-                            self._handle_request, client_socket
-                        )
-                    except socket.timeout:
-                        continue
-            except Exception as e:
-                logger.critical(f"An error occurred: {e}", exc_info=True)
-            finally:
-                if not self._shutdown_called:
-                    self._shutdown()
-
-    def _shutdown(self) -> None:
-        """
-        Shutdown the server, ensuring all threads complete.
-        """
-        if self._shutdown_called:
-            return
-        self._shutdown_called = True
-        self._running = False
-        logger.info(
-            "Shutting down server and waiting for all tasks to complete..."
+        self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._server_socket.setsockopt(
+            socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
         )
+        self._server_socket.bind((self.host, self.port))
+        self._server_socket.listen(256)
+        self._server_socket.settimeout(1)
+
+        logger.info(f"Server is running on http://{self.host}:{self.port}")
+
+        try:
+            while self._running.is_set():
+                try:
+                    client_socket, client_address = (
+                        self._server_socket.accept()
+                    )
+                    logger.info(f"Accepted connection from {client_address}")
+                    self.executor.submit(self._handle_request, client_socket)
+                except socket.timeout:
+                    continue
+                except OSError as e:
+                    if not self._running.is_set():
+                        logger.info("Server socket has been closed.")
+                        break
+                    logger.error(f"Socket error: {e}", exc_info=True)
+        except Exception as e:
+            logger.critical(f"An error occurred: {e}", exc_info=True)
+        finally:
+            self.stop()
+
+    def stop(self) -> None:
+        """
+        Stop the server gracefully.
+        """
+        if not self._running.is_set():
+            return
+        self._running.clear()
+
+        if self._server_socket:
+            try:
+                self._server_socket.close()
+                logger.info("Server socket closed.")
+            except OSError:
+                pass
+
         self.executor.shutdown(wait=True)
-        logger.info("Server has been shut down.")
-        sys.exit(0)
+        logger.info("All threads have been stopped.")
 
     def _handle_request(self, client_socket: socket.socket) -> None:
         """
@@ -182,9 +187,7 @@ class HTTPServer:
             )
             response = error.to_http_response()
         finally:
-            logger.info(
-                f"Sending response:  Status={response.status_code}"
-            )
+            logger.info(f"Sending response:  Status={response.status_code}")
             client_socket.sendall(response.to_http().encode("utf-8"))
             client_socket.close()
 
