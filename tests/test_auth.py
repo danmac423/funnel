@@ -18,9 +18,9 @@ def user_source(tmp_path):
 
 
 @pytest.fixture(autouse=True)
-def mock_secret_key(mocker):
-    """Automatically mock SECRET_KEY for all tests."""
-    mocker.patch("funnel.auth.os.getenv", return_value="mocked_secret_key")
+def mock_secret_key():
+    """Manually set SECRET_KEY for all tests."""
+    Auth.SECRET_KEY = "mocked_secret_key"
 
 
 @pytest.fixture
