@@ -8,7 +8,7 @@ def test_default_error():
     assert error.status_code == 500
     assert error.error_reason == "Internal Server Error"
     assert error.error_message == "An internal server error occurred."
-    assert error.additional_data == {}
+    assert error.additional_data is None
 
 
 def test_custom_error():

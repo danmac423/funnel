@@ -25,7 +25,7 @@ class FunnelError(Exception):
     status_code = 500
     error_reason = "Internal Server Error"
     error_message = "An internal server error occurred."
-    additional_data: dict[str, str] = {}
+    additional_data: Optional[dict[str, str]] = None
 
     def __init__(
         self,
@@ -35,6 +35,8 @@ class FunnelError(Exception):
         if message:
             self.error_message = message
         if additional_data:
+            if not self.additional_data:
+                self.additional_data = {}
             self.additional_data.update(additional_data)
 
     def to_dict(self) -> dict:

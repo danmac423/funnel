@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from funnel.request import Request
 from funnel.router import Router
-from funnel.exceptions import FunnelError
+from funnel.exceptions import FunnelError, BadRequestError
 from funnel.utils import load_config, mount_directories
 
 rotating_file_handler = RotatingFileHandler(
@@ -124,7 +124,7 @@ class HTTPServer:
         try:
             raw_request = client_socket.recv(1024).decode("utf-8")
             if not raw_request.strip():
-                return
+                raise BadRequestError("Empty request received.")
 
             request = Request(raw_request)
             client_ip, client_port = client_socket.getpeername()

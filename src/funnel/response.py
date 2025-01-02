@@ -15,7 +15,7 @@ class Response:
         status_code (int): HTTP status code
         reason (str): HTTP status reason
         headers (dict[str, str]): HTTP headers
-        body (Any): HTTP response body
+        body (Optional[str | bytes]): HTTP response body
 
     Methods:
         set_header: Set a header
