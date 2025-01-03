@@ -2,6 +2,8 @@ import requests
 import multiprocessing
 import time
 import os
+import base64
+
 from funnel.funnel import HTTPServer
 from funnel.response import Response
 from funnel.auth import Auth
@@ -220,5 +222,86 @@ def test_handle_data_post():
         assert "message" in response.json()
         assert response.json()["message"] == "Data received"
         assert response.json()["data"] == {"key": "value"}
+    finally:
+        process.terminate()
+
+
+def test_login():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        for _ in range(10):
+            try:
+                payload = {"username": "john_doe", "password": "admin123"}
+                response = requests.post(
+                    "http://127.0.0.1:8080/login",
+                    json=payload,
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 200
+        assert response.json()["token"] is not None
+    finally:
+        process.terminate()
+
+
+def test_login_bearer():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        for _ in range(10):
+            try:
+                payload = {"username": "john_doe", "password": "admin123"}
+                response = requests.post(
+                    "http://127.0.0.1:8080/login",
+                    json=payload,
+                )
+                token = response.json()["token"]
+                response = requests.get(
+                    "http://127.0.0.1:8080/protected_bearer",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 200
+    finally:
+        process.terminate()
+
+
+def test_login_basic():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    login = "john_doe"
+    password = "admin123"
+    try:
+        for _ in range(10):
+            try:
+                credentials = f"{login}:{password}"
+                encoded_credentials = base64.b64encode(
+                    credentials.encode()
+                ).decode()
+                header = {"Authorization": f"Basic {encoded_credentials}"}
+                response = requests.get(
+                    "http://127.0.0.1:8080/protected_basic",
+                    headers=header,
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 200
     finally:
         process.terminate()
