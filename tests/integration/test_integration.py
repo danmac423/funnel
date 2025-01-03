@@ -250,7 +250,7 @@ def test_login():
         process.terminate()
 
 
-def test_login_bearer():
+def test_authorization_bearer():
     process = multiprocessing.Process(target=run_server)
     process.start()
 
@@ -278,7 +278,7 @@ def test_login_bearer():
         process.terminate()
 
 
-def test_login_basic():
+def test_authorization_basic():
     process = multiprocessing.Process(target=run_server)
     process.start()
 
