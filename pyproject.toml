@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = ["mypy", "pytest", "ruff", "setuptools", "pyjwt", "pytest-cov", "python-dotenv", "pytest-mock", "pyaml", "types-PyYAML"]
+dependencies = ["mypy", "pytest", "ruff", "setuptools", "pyjwt", "pytest-cov", "python-dotenv", "pytest-mock", "pyaml", "types-PyYAML", "requests"]
 
 
 [tool.ruff]
