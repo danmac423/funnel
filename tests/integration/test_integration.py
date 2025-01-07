@@ -78,6 +78,10 @@ def configure_server(
             {"message": "Data received", "data": request.parsed_body},
         )
 
+    @server.route("/internal_error", methods=["GET"])
+    def error(request):
+        raise Exception("Internal error")
+
     return server
 
 
@@ -101,7 +105,7 @@ def test_get_request():
     try:
         for _ in range(10):
             try:
-                response = requests.get("http://127.0.0.1:8080/hello")
+                response = requests.get("http://127.0.0.1:8080/")
                 break
             except requests.ConnectionError:
                 time.sleep(0.5)
@@ -109,7 +113,7 @@ def test_get_request():
             raise RuntimeError("Server did not start in time.")
         assert response.status_code == 200
         assert response.headers["Content-Type"] == "text/html"
-        assert "<h1>Hello, World!</h1>" in response.text
+        assert "<h1>Welcome to the Home Page!</h1>" in response.text
     finally:
         process.terminate()
 
