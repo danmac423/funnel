@@ -1,11 +1,13 @@
-import pytest
-import jwt
-import json
 import base64
 import datetime
+import json
+
+import jwt
+import pytest
+
 from funnel.auth import Auth
+from funnel.exceptions import BadRequestError, UnauthorizedError
 from funnel.user_source import JsonUserSource
-from funnel.exceptions import UnauthorizedError, BadRequestError
 
 USER_DATA = {"users": [{"username": "test_user", "password": "test_pass"}]}
 

@@ -1,10 +1,13 @@
-import pytest
+import logging
 import signal
 import socket
-import logging
 from unittest.mock import MagicMock
+
+import pytest
+
 from funnel.funnel import HTTPServer
 from funnel.router import Router
+
 
 @pytest.fixture
 def mock_config(mocker):

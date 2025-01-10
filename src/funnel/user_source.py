@@ -1,6 +1,7 @@
-from abc import ABC, abstractmethod
 import json
+from abc import ABC, abstractmethod
 from typing import Optional
+
 
 class UserSource(ABC):
 

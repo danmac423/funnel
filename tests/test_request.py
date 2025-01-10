@@ -1,6 +1,7 @@
 import pytest
-from funnel.request import Request
+
 from funnel.exceptions import BadRequestError
+from funnel.request import Request
 
 
 def test_valid_get_request():

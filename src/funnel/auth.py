@@ -1,13 +1,15 @@
-import jwt
-import os
-import datetime
 import base64
+import datetime
+import os
 from functools import wraps
-from funnel.user_source import UserSource
-from funnel.exceptions import UnauthorizedError, BadRequestError
-from funnel.request import Request
 from typing import Callable
+
+import jwt
 from dotenv import load_dotenv
+
+from funnel.exceptions import BadRequestError, UnauthorizedError
+from funnel.request import Request
+from funnel.user_source import UserSource
 
 load_dotenv()
 

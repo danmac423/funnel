@@ -1,16 +1,18 @@
+import os
+
 import pytest
+
+from funnel.exceptions import NotFoundError
+from funnel.request import Request
+from funnel.router import Router
 from funnel.utils import (
-    mount_directories,
     directory_handler_factory,
+    load_config,
+    mount_directories,
     resolve_requested_path,
     serve_directory,
     serve_file,
-    load_config,
 )
-from funnel.router import Router
-from funnel.request import Request
-from funnel.exceptions import NotFoundError
-import os
 
 
 def create_mock_request(path: str) -> Request:

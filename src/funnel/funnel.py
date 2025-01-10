@@ -1,16 +1,14 @@
-import socket
-import signal
 import logging
+import signal
+import socket
 import threading
-
+from concurrent.futures import ThreadPoolExecutor
 from logging.handlers import RotatingFileHandler
 from typing import Callable, Optional
-from concurrent.futures import ThreadPoolExecutor
 
-
+from funnel.exceptions import BadRequestError, FunnelError
 from funnel.request import Request
 from funnel.router import Router
-from funnel.exceptions import FunnelError, BadRequestError
 from funnel.utils import load_config, mount_directories
 
 rotating_file_handler = RotatingFileHandler(
