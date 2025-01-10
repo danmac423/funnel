@@ -1,12 +1,13 @@
-import requests
-import multiprocessing
-import time
-import os
 import base64
+import multiprocessing
+import os
+import time
 
+import requests
+
+from funnel.auth import Auth
 from funnel.funnel import HTTPServer
 from funnel.response import Response
-from funnel.auth import Auth
 from funnel.user_source import JsonUserSource
 
 TEST_PATH = "./tests/integration/"

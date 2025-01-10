@@ -1,4 +1,5 @@
 import json
+
 from funnel.response import Response
 
 

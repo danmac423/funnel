@@ -3,13 +3,13 @@ Utility functions for Funnel.
 """
 
 import os
-import yaml
-
 from mimetypes import guess_type
 from typing import Callable
 
-from funnel.response import Response
+import yaml
+
 from funnel.exceptions import NotFoundError
+from funnel.response import Response
 from funnel.router import Router
 
 

@@ -3,7 +3,6 @@ This module contains the Response class for the Funnel framework.
 """
 
 import json
-
 from typing import Optional
 
 

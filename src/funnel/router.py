@@ -4,9 +4,8 @@ This module contains the Router class to manage routes and handlers.
 
 import os
 import re
-
-from typing import Callable, Optional
 from dataclasses import dataclass
+from typing import Callable, Optional
 
 from funnel.exceptions import MethodNotAllowedError, NotFoundError
 

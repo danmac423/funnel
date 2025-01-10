@@ -1,10 +1,9 @@
-import requests
+import base64
 import multiprocessing
 import time
-import base64
 
+import requests
 from test_integration import run_server
-
 
 TEST_PATH = "./tests/integration/"
 

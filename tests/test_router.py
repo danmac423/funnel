@@ -1,6 +1,7 @@
 import pytest
-from funnel.router import Router
+
 from funnel.exceptions import MethodNotAllowedError, NotFoundError
+from funnel.router import Router
 
 
 def test_add_static_route():

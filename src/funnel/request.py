@@ -2,10 +2,9 @@
 This module provides a class to represent and parse an HTTP request.
 """
 
-import urllib.parse
 import json
 import os
-
+import urllib.parse
 from typing import Optional
 
 from funnel.exceptions import BadRequestError
