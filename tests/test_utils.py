@@ -187,9 +187,7 @@ def test_directory_handler_factory_not_found(tmp_path):
     handler = directory_handler_factory(str(tmp_path), "/static")
     request = create_mock_request("/static/nonexistent")
 
-    with pytest.raises(
-        FileNotFoundError, match="File or directory not found."
-    ):
+    with pytest.raises(NotFoundError, match="File or directory not found."):
         handler(request)
 
 
