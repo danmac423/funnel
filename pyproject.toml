@@ -22,3 +22,8 @@ extend-select = ["E501"]
 pythonpath = ["src"]
 addopts = "--cov=src --cov-report=term-missing"
 
+
+[tool.mypy]
+ignore_missing_imports = true
+check_untyped_defs = true
+
