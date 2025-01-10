@@ -1,8 +1,7 @@
+from funnel.auth import Auth
 from funnel.funnel import HTTPServer
 from funnel.response import Response
-from funnel.auth import Auth
 from funnel.user_source import JsonUserSource
-
 
 auth = Auth()
 auth.configure_user_source(JsonUserSource("users.json"))
