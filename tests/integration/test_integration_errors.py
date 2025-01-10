@@ -83,7 +83,7 @@ def test_authorization_bearer_invalid_token():
             try:
                 response = requests.get(
                     "http://127.0.0.1:8080/protected_bearer",
-                    headers={"Authorization": f"Bearer token"},
+                    headers={"Authorization": "Bearer token"},
                 )
                 break
             except requests.ConnectionError:

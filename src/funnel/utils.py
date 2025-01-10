@@ -121,7 +121,7 @@ def serve_directory(directory_path: str, request_path: str) -> Response:
     try:
         entries = sorted(os.listdir(directory_path))
         links = [
-            f"<li><a href='{os.path.join(request_path, entry)}'>{entry}</a></li>"
+            f"<li><a href='{os.path.join(request_path, entry)}'>{entry}</a></li>"  # noqa
             for entry in entries
         ]
         html_content = (
@@ -131,7 +131,7 @@ def serve_directory(directory_path: str, request_path: str) -> Response:
         return Response.html(
             status_code=200, reason="OK", html_content=html_content
         )
-    except Exception as e:
+    except Exception:
         raise NotFoundError(f"Error reading folder: {directory_path}")
 
 
