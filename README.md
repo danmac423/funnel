@@ -143,8 +143,8 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
    - **Opis działania**:
      - Serwer sprawdza nagłówek **Authorization**:
        - Jeśli dane (login i hasło) są poprawne → odpowiedź **200 OK**.
-       - Jeśli dane są niepoprawne → odpowiedź **403 Forbidden**.
-       - Jeśli brak nagłówka **Authorization** → odpowiedź **401 Unauthorized**.
+       - Jeśli dane są niepoprawne → odpowiedź **401 Unauthorized**.
+       - Jeśli brak nagłówka **Authorization** → odpowiedź **400 Bad Request**.
    - **Rezultat**: Użytkownik otrzymuje zasób lub komunikat o błędzie.
 
 ---
@@ -154,8 +154,8 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
    - **Opis działania**:
      - Serwer weryfikuje token Bearer w nagłówku **Authorization**.
        - Jeśli token jest poprawny → odpowiedź **200 OK**.
-       - Jeśli token jest błędny → odpowiedź **403 Forbidden**.
-       - Jeśli brak tokena → odpowiedź **401 Unauthorized**.
+       - Jeśli token jest błędny → odpowiedź **401 Unauthorized**.
+       - Jeśli brak tokena → odpowiedź **400 Bad Request**.
    - **Rezultat**: Użytkownik otrzymuje zasób lub komunikat o błędzie.
 
 ---
@@ -237,7 +237,7 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 4. **Brak autoryzacji dla zasobu chronionego**
    - **Sytuacja błędna**: Użytkownik próbuje uzyskać dostęp do zasobu chronionego bez nagłówka **Authorization**.
    - **Obsługa**:
-     - Serwer zwraca odpowiedź **401 Unauthorized** z komunikatem:
+     - Serwer zwraca odpowiedź **400 Bad Request** z komunikatem:
        ```json
        {
          "error": "Authorization header is missing."
@@ -249,7 +249,7 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 5. **Niepoprawne dane autoryzacyjne**
    - **Sytuacja błędna**: Użytkownik podaje błędny login/hasło (Basic) lub token (Bearer).
    - **Obsługa**:
-     - Serwer zwraca odpowiedź **403 Forbidden** z komunikatem:
+     - Serwer zwraca odpowiedź **401 Unauthorized** z komunikatem:
        ```json
        {
          "error": "Invalid credentials or token."
