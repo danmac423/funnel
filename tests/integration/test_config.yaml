@@ -3,6 +3,6 @@ port: 8080
 max_workers: 10
 mounted_directories:
   - path: "/static"
-    directory: "."
-  - path: "/project"
     directory: "/"
+  - path: "/project"
+    directory: "."

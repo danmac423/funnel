@@ -73,5 +73,10 @@ def handle_data(request):
     )
 
 
+@server.route("/internal_error", methods=["GET"])
+def wrong_code(request):
+    return Response.json("200".__dict__, "OK", {"message": "Welcome!"})
+
+
 if __name__ == "__main__":
     server.start()

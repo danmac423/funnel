@@ -76,7 +76,7 @@ def directory_handler_factory(base_directory: str, base_path: str) -> Callable:
         if os.path.isfile(requested_path):
             return serve_file(requested_path)
 
-        raise FileNotFoundError("File or directory not found.")
+        raise NotFoundError("File or directory not found.")
 
     return handler
 
@@ -118,18 +118,21 @@ def serve_directory(directory_path: str, request_path: str) -> Response:
     Returns:
         Response: HTML response containing the directory listing.
     """
-    entries = sorted(os.listdir(directory_path))
-    links = [
-        f"<li><a href='{os.path.join(request_path, entry)}'>{entry}</a></li>"
-        for entry in entries
-    ]
-    html_content = (
-        f"<html><body><h1>Index of {request_path}</h1>"
-        f"<ul>{''.join(links)}</ul></body></html>"
-    )
-    return Response.html(
-        status_code=200, reason="OK", html_content=html_content
-    )
+    try:
+        entries = sorted(os.listdir(directory_path))
+        links = [
+            f"<li><a href='{os.path.join(request_path, entry)}'>{entry}</a></li>"
+            for entry in entries
+        ]
+        html_content = (
+            f"<html><body><h1>Index of {request_path}</h1>"
+            f"<ul>{''.join(links)}</ul></body></html>"
+        )
+        return Response.html(
+            status_code=200, reason="OK", html_content=html_content
+        )
+    except Exception as e:
+        raise NotFoundError(f"Error reading folder: {directory_path}")
 
 
 def serve_file(file_path: str) -> Response:
