@@ -13,15 +13,14 @@ from funnel.user_source import JsonUserSource
 TEST_PATH = "./tests/integration/"
 
 
-def configure_server(
-    config_path: str = "./config/server_config.yaml",
-    users_path: str = "users.json",
-) -> HTTPServer:
+def configure_server() -> HTTPServer:
     """Configure server like in main."""
     auth = Auth()
-    auth.configure_user_source(JsonUserSource(users_path))
+    auth.configure_user_source(JsonUserSource(f"{TEST_PATH}users.json"))
 
-    server = HTTPServer(config_path)
+    server = HTTPServer(
+        f"{TEST_PATH}test_config.yaml",
+    )
 
     @server.route("/login", methods=["POST"])
     def login(request):
@@ -83,19 +82,16 @@ def configure_server(
     def error(request):
         raise Exception("Internal error")
 
+    @server.route("/hello", methods=["GET"])
+    def hello(request):
+        return Response.html(200, "OK", "<h1>Hello, World!</h1>")
+
     return server
 
 
 def run_server():
     """Funkcja do uruchomienia serwera w osobnym procesie."""
-    server = configure_server(
-        f"{TEST_PATH}test_config.yaml", f"{TEST_PATH}users.json"
-    )
-    server.route("/hello", methods=["GET"])(
-        lambda req: Response.html(
-            status_code=200, reason="OK", html_content="<h1>Hello, World!</h1>"
-        )
-    )
+    server = configure_server()
     server.start()
 
 
@@ -232,6 +228,8 @@ def test_handle_data_post():
 
 
 def test_login():
+    os.environ["SECRET_KEY"] = "mocked_secret_key"
+
     process = multiprocessing.Process(target=run_server)
     process.start()
 
@@ -256,6 +254,8 @@ def test_login():
 
 
 def test_authorization_bearer():
+    os.environ["SECRET_KEY"] = "mocked_secret_key"
+
     process = multiprocessing.Process(target=run_server)
     process.start()
 
