@@ -13,6 +13,7 @@ from funnel.user_source import UserSource
 
 load_dotenv()
 
+
 class Auth:
     SECRET_KEY = os.getenv("SECRET_KEY")
 
@@ -94,7 +95,6 @@ class Auth:
         user = self.user_source.get_user(username)
         if not user or password != user.get("password"):
             raise ValueError("Invalid credentials")
-
 
     @staticmethod
     def decode_token(token: str) -> dict:
