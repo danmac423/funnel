@@ -12,6 +12,8 @@ from funnel.user_source import JsonUserSource
 
 TEST_PATH = "./tests/integration/"
 
+multiprocessing.set_start_method("spawn", force=True)
+
 
 def configure_server() -> HTTPServer:
     """Configure server like in main."""
