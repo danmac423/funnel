@@ -17,6 +17,8 @@ ruff-lint:
   rules:
     - changes:
         - "**/*.py"
+        - "pyproject.toml"
+        - ".gitlab-ci.yml"
 
 
 # Lint stage with mypy
@@ -34,6 +36,7 @@ mypy-type-check:
     - changes:
         - "**/*.py"
         - "pyproject.toml"
+        - ".gitlab-ci.yml"
 
 # Test stage with pytest
 pytest-tests:
@@ -49,3 +52,5 @@ pytest-tests:
   rules:
     - changes:
         - "**/*.py"
+        - "pyproject.toml"
+        - ".gitlab-ci.yml"
