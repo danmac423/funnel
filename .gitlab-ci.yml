@@ -33,6 +33,7 @@ mypy-type-check:
   rules:
     - changes:
         - "**/*.py"
+        - "pyproject.toml"
 
 # Test stage with pytest
 pytest-tests:
