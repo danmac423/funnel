@@ -2,6 +2,8 @@ from funnel.auth import Auth
 from funnel.funnel import HTTPServer
 from funnel.response import Response
 from funnel.user_source import JsonUserSource
+from funnel.exceptions import NotFoundError
+import os
 
 auth = Auth()
 auth.configure_user_source(JsonUserSource("users.json"))
@@ -71,6 +73,22 @@ def handle_data(request):
         {"message": "Data received", "data": request.parsed_body},
     )
 
+
+@server.route("/data", methods=["DELETE"])
+def delete_data(request):
+    mounted_directories = server.get_mounted_directories()
+    removed = False
+    for dir in mounted_directories:
+        if dir[-1] != '/':
+            dir = dir + '/'
+        requested_path = dir + request.parsed_body["path"]
+        if os.path.isfile(requested_path):
+            os.remove(requested_path)
+            removed = True
+    if not removed:
+        raise NotFoundError("File not found.")
+    else:
+        return Response.json(200, "OK", {"message": "Deleted"})
 
 @server.route("/internal_error", methods=["GET"])
 def wrong_code(request):
