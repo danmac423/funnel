@@ -47,6 +47,8 @@ class HTTPServer:
 
         mount_directories(self.router, config)
 
+        self._mounted_directories = config.get("mounted_directories", [])
+
         signal.signal(signal.SIGINT, self._handle_signal)
         signal.signal(signal.SIGTERM, self._handle_signal)
 
@@ -171,3 +173,7 @@ class HTTPServer:
             Callable: A decorator to register the route.
         """
         return self.router.route(path, methods=methods, host=host)
+
+
+    def get_mounted_directories(self):
+        return [dir.get("directory") for dir in self._mounted_directories]
