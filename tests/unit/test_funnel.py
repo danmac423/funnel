@@ -23,6 +23,7 @@ def mock_config(mocker):
 
 class MockedKeyboardInterrupt(Exception):
     """Custom exception to simulate KeyboardInterrupt."""
+
     pass
 
 
@@ -53,7 +54,7 @@ def test_start_stop_server(server, mocker):
     mock_accept = mock_server_socket.accept
     mock_accept.side_effect = [
         ("client_socket", ("127.0.0.1", 12345)),
-        MockedKeyboardInterrupt
+        MockedKeyboardInterrupt,
     ]
 
     mock_handle_request = mocker.patch.object(server, "_handle_request")
@@ -65,6 +66,7 @@ def test_start_stop_server(server, mocker):
     mock_server_socket.listen.assert_called_once_with(256)
     mock_handle_request.assert_called_once_with("client_socket")
     mock_stop.assert_called_once()
+
 
 def test_stop(server, mocker):
     mock_socket = MagicMock()
@@ -83,15 +85,12 @@ def test_stop(server, mocker):
 def test_handle_request(server, mocker):
     mock_socket = MagicMock()
     mock_socket.recv.return_value = (
-        b"GET / HTTP/1.1\r\nHost: localhost\r\n"
-        b"\r\n"
+        b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
     )
 
     mock_request = mocker.patch("funnel.request.Request")
     mock_request.return_value = MagicMock(
-        method="GET",
-        path="/",
-        headers={"Host": "localhost"}
+        method="GET", path="/", headers={"Host": "localhost"}
     )
 
     mock_response = mocker.patch("funnel.response.Response")
@@ -121,9 +120,7 @@ def test_route(server):
     route_decorator(MagicMock())
 
     mock_router.route.assert_called_once_with(
-        "/test",
-        methods=["GET"],
-        host="localhost"
+        "/test", methods=["GET"], host="localhost"
     )
 
 
@@ -187,9 +184,9 @@ def test_handle_request_empty_request(server, mocker):
 
     mock_response = mocker.patch("funnel.response.Response")
     mock_response.return_value.to_http.return_value = (
-        b'HTTP/1.1 400 Bad Request\r\n'
-        b'Content-Type: application/json\r\n'
-        b'Content-Length: 56\r\n\r\n'
+        b"HTTP/1.1 400 Bad Request\r\n"
+        b"Content-Type: application/json\r\n"
+        b"Content-Length: 56\r\n\r\n"
         b'{"error": "Empty request received.", "status_code": 400}'
     )
     mock_response.return_value.status_code = 400
@@ -200,9 +197,9 @@ def test_handle_request_empty_request(server, mocker):
 
     mock_request.assert_not_called()
     mock_socket.sendall.assert_called_once_with(
-        b'HTTP/1.1 400 Bad Request\r\n'
-        b'Content-Type: application/json\r\n'
-        b'Content-Length: 56\r\n\r\n'
+        b"HTTP/1.1 400 Bad Request\r\n"
+        b"Content-Type: application/json\r\n"
+        b"Content-Length: 56\r\n\r\n"
         b'{"error": "Empty request received.", "status_code": 400}'
     )
     mock_socket.close.assert_called_once()
@@ -213,21 +210,18 @@ def test_handle_request_unexpected_error(server, mocker, caplog):
 
     mock_socket = MagicMock()
     mock_socket.recv.return_value = (
-        b"GET / HTTP/1.1\r\nHost: localhost\r\n"
-        b"\r\n"
+        b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
     )
     mock_socket.getpeername.return_value = ("127.0.0.1", 12345)
 
     mocker.patch.object(
-        server.router,
-        "get_handler",
-        side_effect=Exception("Unexpected error")
+        server.router, "get_handler", side_effect=Exception("Unexpected error")
     )
 
     mock_response = mocker.patch("funnel.response.Response")
     mock_response.return_value.to_http.return_value = (
-        b'HTTP/1.1 500 Internal Server Error\r\nContent-Type: '
-        b'application/json\r\nContent-Length: 93\r\n\r\n'
+        b"HTTP/1.1 500 Internal Server Error\r\nContent-Type: "
+        b"application/json\r\nContent-Length: 93\r\n\r\n"
         b'{"error": "An unexpected error occurred.", "status_code": 500, '
         b'"details": "Unexpected error"}'
     )
@@ -235,13 +229,65 @@ def test_handle_request_unexpected_error(server, mocker, caplog):
     server._handle_request(mock_socket)
 
     mock_socket.sendall.assert_called_once_with(
-        b'HTTP/1.1 500 Internal Server Error\r\nContent-Type: '
-        b'application/json\r\nContent-Length: 93\r\n\r\n'
+        b"HTTP/1.1 500 Internal Server Error\r\nContent-Type: "
+        b"application/json\r\nContent-Length: 93\r\n\r\n"
         b'{"error": "An unexpected error occurred.", "status_code": 500, '
         b'"details": "Unexpected error"}'
     )
 
     mock_socket.close.assert_called_once()
-    print(caplog.text)
 
     assert "Unexpected error occurred: Unexpected error" in caplog.text
+
+
+def test_oserror_when_stopped(server, mocker, caplog):
+    caplog.set_level(logging.INFO, logger="HTTP Server")
+
+    mock_socket = mocker.patch("socket.socket")
+    mock_server_socket = MagicMock()
+    mock_socket.return_value = mock_server_socket
+
+    def accept_side_effect():
+        server._running.clear()
+        raise OSError("Test OSError")
+
+    mock_server_socket.accept.side_effect = accept_side_effect
+
+    mock_stop = mocker.patch.object(server, "stop")
+
+    server._running.set()
+
+    server.start()
+
+    assert "Server socket has been closed." in caplog.text
+    assert "Socket error: Test OSError" not in caplog.text
+    mock_stop.assert_called_once()
+
+
+def test_oserror_when_running(server, mocker, caplog):
+    caplog.set_level(logging.ERROR, logger="HTTP Server")
+
+    mock_socket = mocker.patch("socket.socket")
+    mock_server_socket = MagicMock()
+    mock_socket.return_value = mock_server_socket
+
+    mock_server_socket.accept.side_effect = [
+        OSError("Test OSError"),
+        MagicMock(),
+    ]
+
+    server._running.set()
+
+    original_running = server._running.is_set
+
+    def stop_running():
+        if mock_server_socket.accept.call_count == 2:
+            server._running.clear()
+        return original_running()
+
+    mocker.patch.object(server._running, "is_set", side_effect=stop_running)
+
+    server.start()
+
+    assert "Socket error: Test OSError" in caplog.text
+    assert mock_server_socket.accept.call_count == 2
