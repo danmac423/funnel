@@ -204,7 +204,9 @@ def remove_file(server, request: Request):
         raise BadRequestError("Body: Invalid type for 'path' (Not a str).")
 
     for dir in mounted_directories:
-        dir = os.path.abspath(dir) + os.path.sep
+        dir = os.path.abspath(dir)
+        if dir[-1] != os.path.sep:
+            dir += os.path.sep
         requested_path = os.path.abspath(os.path.join(dir, in_path))
         
         if not requested_path.startswith(dir):

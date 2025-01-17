@@ -13,12 +13,30 @@ from funnel.utils import (
     resolve_requested_path,
     serve_directory,
     serve_file,
+    remove_file
 )
 
+class MockServer():
+    def __init__(self, tmp_path):
+        self._mounted_directories = [{"directory": f'{tmp_path}'}]
+
+    def get_mounted_directories(self):
+        return [dir.get("directory") for dir in self._mounted_directories]
 
 def create_mock_request(path: str) -> Request:
     raw_request = f"GET {path} HTTP/1.1\r\nHost: localhost\r\n\r\n"
     return Request(raw_request)
+
+def create_mock_del_request(path: str, file_path: str) -> Request:
+    raw_request = (
+        f"DELETE {path} HTTP/1.1\r\n"
+        "Host: localhost:8080\r\n"
+        "Content-Type: application/json\r\n"
+        f"Content-Length: {12+len(file_path)}\r\n\r\n"
+        f'{{"path": "{file_path}"}}'
+    )
+    request = Request(raw_request)
+    return request
 
 
 def test_load_config_valid(tmp_path):
@@ -209,3 +227,12 @@ def test_directory_handler_factory_nonexistent_path(tmp_path):
     nonexistent_path = tmp_path / "nonexistent"
     with pytest.raises(ValueError):
         directory_handler_factory(str(nonexistent_path), "/static")
+
+
+def test_remove_file_correct(tmp_path):
+    file_path = tmp_path / "del.txt"
+    open(file_path, 'a').close()
+
+    request = create_mock_del_request("/data", "del.txt")
+    server = MockServer(tmp_path=tmp_path)
+    remove_file(server=server, request=request)
