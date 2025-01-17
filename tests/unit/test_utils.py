@@ -3,18 +3,19 @@ from unittest.mock import patch
 
 import pytest
 
-from funnel.exceptions import NotFoundError
+from funnel.exceptions import BadRequestError, NotFoundError
 from funnel.request import Request
 from funnel.router import Router
 from funnel.utils import (
     directory_handler_factory,
     load_config,
     mount_directories,
+    remove_file,
     resolve_requested_path,
     serve_directory,
     serve_file,
-    remove_file
 )
+
 
 class MockServer():
     def __init__(self, tmp_path):
@@ -236,3 +237,39 @@ def test_remove_file_correct(tmp_path):
     request = create_mock_del_request("/data", "del.txt")
     server = MockServer(tmp_path=tmp_path)
     remove_file(server=server, request=request)
+
+def test_remove_file_not_found(tmp_path):
+    request = create_mock_del_request("/data", "del.txt")
+    server = MockServer(tmp_path=tmp_path)
+    with pytest.raises(NotFoundError):
+        remove_file(server=server, request=request)
+
+def test_remove_file_wrong_path(tmp_path):
+    file_path = tmp_path / "del.txt"
+    open(file_path, 'a').close()
+
+    request = create_mock_del_request("/data", "example/del.txt")
+    server = MockServer(tmp_path=tmp_path)
+    with pytest.raises(NotFoundError):
+        remove_file(server=server, request=request)
+
+def test_remove_file_forbidden_path(tmp_path):
+    file_path = tmp_path / "../del.txt"
+    open(file_path, 'a').close()
+
+    request = create_mock_del_request("/data", "../del.txt")
+    server = MockServer(tmp_path=tmp_path)
+    with pytest.raises(NotFoundError):
+        remove_file(server=server, request=request)
+
+def test_remove_file_missing_body(tmp_path):
+    raw_request = (
+        "DELETE /data HTTP/1.1\r\n"
+        "Host: localhost:8080\r\n"
+        "Content-Type: application/json\r\n\r\n"
+    )
+    request = Request(raw_request)
+
+    server = MockServer(tmp_path=tmp_path)
+    with pytest.raises(BadRequestError):
+        remove_file(server=server, request=request)

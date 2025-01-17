@@ -196,12 +196,7 @@ def remove_file(server, request: Request):
     if not isinstance(request.parsed_body, dict):
         raise BadRequestError("Body: Invalid request body (Not a dict).")
 
-    if "path" not in request.parsed_body:
-        raise BadRequestError("Body: Missing 'path' in request body.")
-
     in_path = request.parsed_body["path"]
-    if not isinstance(in_path, str):
-        raise BadRequestError("Body: Invalid type for 'path' (Not a str).")
 
     for dir in mounted_directories:
         dir = os.path.abspath(dir)
