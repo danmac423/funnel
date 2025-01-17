@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch
 
 import pytest
 
@@ -120,6 +121,17 @@ def test_serve_directory(tmp_path):
     assert response.status_code == 200
     assert "file1.txt" in str(response.body)
     assert "file2.txt" in str(response.body)
+
+
+def test_serve_directory_exception(tmp_path):
+    # Mock os.listdir to raise an exception
+    with patch("os.listdir", side_effect=OSError("Test error")):
+        with pytest.raises(NotFoundError) as excinfo:
+            serve_directory(str(tmp_path), "/static")
+
+        # Assert the exception message
+        assert "Error reading folder" in str(excinfo.value)
+        assert str(tmp_path) in str(excinfo.value)
 
 
 def test_serve_file_valid(tmp_path):
