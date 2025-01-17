@@ -3,7 +3,6 @@ from funnel.funnel import HTTPServer
 from funnel.response import Response
 from funnel.user_source import JsonUserSource
 from funnel.utils import remove_file
-import os
 
 auth = Auth()
 auth.configure_user_source(JsonUserSource("users.json"))

@@ -8,10 +8,11 @@ from typing import Callable
 
 import yaml
 
-from funnel.exceptions import NotFoundError
+from funnel.exceptions import BadRequestError, NotFoundError
+from funnel.request import Request
 from funnel.response import Response
 from funnel.router import Router
-from funnel.request import Request
+
 
 def mount_directories(router: Router, config: dict) -> None:
     """
@@ -191,10 +192,19 @@ def load_config(file_path: str) -> dict:
 def remove_file(server, request: Request):
     mounted_directories = server.get_mounted_directories()
     removed = False
+
+    if not isinstance(request.parsed_body, dict):
+        raise BadRequestError("Body: Invalid request body (Not a dict).")
+
+    if "path" not in request.parsed_body:
+        raise BadRequestError("Body: Missing 'path' in request body.")
+
+    in_path = request.parsed_body["path"]
+    if not isinstance(in_path, str):
+        raise BadRequestError("Body: Invalid type for 'path' (Not a str).")
+
     for dir in mounted_directories:
         dir = os.path.abspath(dir) + os.path.sep
-        
-        in_path = request.parsed_body["path"]
         requested_path = os.path.abspath(os.path.join(dir, in_path))
         
         if not requested_path.startswith(dir):
