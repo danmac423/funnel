@@ -174,6 +174,8 @@ class HTTPServer:
         """
         return self.router.route(path, methods=methods, host=host)
 
-
     def get_mounted_directories(self):
-        return [dir.get("directory") for dir in self._mounted_directories]
+        return list(filter(
+            lambda x: x is not None,
+            [dir.get("directory") for dir in self._mounted_directories],
+        ))
