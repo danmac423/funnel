@@ -341,4 +341,33 @@ def test_post_json_file():
         process.terminate()
 
 
+def test_range_header_support():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    file_path = os.path.join("tests/integration/", "test_file.txt")
+    with open(file_path, "w") as f:
+        f.write("This is a test file for Range header support.")
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.get(
+                   "http://127.0.0.1:8080/project/tests/integration/test_file.txt",
+                    headers={"Range": "bytes=0-4"},
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 206
+        assert response.headers["Content-Range"] == "bytes 0-4/45"
+        assert response.text == "This "
+
+    finally:
+        process.terminate()
+        if os.path.exists(file_path):
+            os.remove(file_path)
 

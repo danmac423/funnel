@@ -1,5 +1,6 @@
 import base64
 import multiprocessing
+import os
 import time
 
 import requests
@@ -326,3 +327,98 @@ def test_post_empty_body():
         assert "Missing body content in request" in response_json["error"]
     finally:
         process.terminate()
+
+
+def test_invalid_range_format():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    file_path = os.path.join("tests/integration/", "test_file.txt")
+    with open(file_path, "w") as f:
+        f.write("This is a test file for Range header support.")
+
+    try:
+        for _ in range(10):
+            try:
+                # Invalid Range format
+                response = requests.get(
+                    "http://127.0.0.1:8080/project/tests/integration/test_file.txt",
+                    headers={"Range": "bytes=abc-def"},
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        # Check response
+        assert response.status_code == 400
+        assert "Invalid Range header format" in response.json()["error"]
+
+    finally:
+        process.terminate()
+        os.remove(file_path)
+
+
+def test_out_of_bounds_range():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    file_path = os.path.join("tests/integration/", "test_file.txt")
+    with open(file_path, "w") as f:
+        f.write("This is a test file for Range header support.")
+
+
+    try:
+        for _ in range(10):
+            try:
+                # Out-of-bounds range
+                response = requests.get(
+                    "http://127.0.0.1:8080/project/tests/integration/test_file.txt",
+                    headers={"Range": "bytes=100-200"},
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        # Check response
+        assert response.status_code == 400
+        assert "Invalid byte range." in response.json()["error"]
+
+    finally:
+        process.terminate()
+        os.remove(file_path)
+
+
+def test_invalid_range():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    file_path = os.path.join("tests/integration/", "test_file.txt")
+    with open(file_path, "w") as f:
+        f.write("This is a test file for Range header support.")
+
+
+    try:
+        for _ in range(10):
+            try:
+                # Range request on an empty file
+                response = requests.get(
+                    "http://127.0.0.1:8080/project/tests/integration/test_file.txt",
+                    headers={"Range": "bytes=10-5"},
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        # Check response
+        assert response.status_code == 400
+        assert "Invalid byte range." in response.json()["error"]
+
+    finally:
+        process.terminate()
+        os.remove(file_path)
