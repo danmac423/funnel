@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from funnel.exceptions import BadRequestError
 from funnel.funnel import HTTPServer
 from funnel.router import Router
 
@@ -87,29 +88,176 @@ def test_handle_request(server, mocker):
     mock_socket.recv.return_value = (
         b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
     )
-
-    mock_request = mocker.patch("funnel.request.Request")
-    mock_request.return_value = MagicMock(
-        method="GET", path="/", headers={"Host": "localhost"}
-    )
-
-    mock_response = mocker.patch("funnel.response.Response")
-    mock_response.to_http.return_value = b"HTTP/1.1 200 OK\r\n\r\n"
-
-    mock_router = MagicMock()
-    mock_router.get_handler.return_value = MagicMock(
-        return_value=mock_response
-    )
     mock_socket.getpeername.return_value = ("localhost", 12345)
 
-    server = HTTPServer("mock_config_path")
+    mock_response = mocker.patch("funnel.response.Response")
+    mock_response.return_value.to_http.return_value = b"HTTP/1.1 200 OK\r\n\r\n"
+
+    mock_router = MagicMock()
+    handler = MagicMock(return_value=mock_response.return_value)
+    mock_router.get_handler.return_value = handler
     server.router = mock_router
 
     server._handle_request(mock_socket)
 
-    mock_router.get_handler.assert_called_once_with("/", "GET", "localhost")
+    # Sprawdzenie, czy handler został wywołany z rzeczywistym obiektem Request
+    handler.assert_called_once()
+    request = handler.call_args[0][0]
+
+    assert request.method == "GET"
+    assert request.path == "/"
+    assert request.headers == {"Host": "localhost"}
+
     mock_socket.sendall.assert_called_once_with(b"HTTP/1.1 200 OK\r\n\r\n")
     mock_socket.close.assert_called_once()
+
+
+def test_handle_request_large_body(server):
+    headers = (
+        b"POST /upload HTTP/1.1\r\n"
+        b"Host: localhost\r\n"
+        b"Content-Length: 4096\r\n\r\n"
+    )
+    body_chunk = b"A" * 1024
+    full_body = body_chunk * 4
+
+    mock_socket = MagicMock()
+    mock_socket.recv.side_effect = [headers, body_chunk, body_chunk, body_chunk, body_chunk, b""]
+    mock_socket.getpeername.return_value = ("localhost", 12345)
+
+    mock_response = MagicMock()
+    mock_response.to_http.return_value = b"HTTP/1.1 200 OK\r\n\r\n"
+
+    mock_router = MagicMock()
+    handler = MagicMock(return_value=mock_response)
+    mock_router.get_handler.return_value = handler
+    server.router = mock_router
+
+    server._handle_request(mock_socket)
+
+    handler.assert_called_once()
+    request = handler.call_args[0][0]
+
+    assert request.method == "POST"
+    assert request.path == "/upload"
+    assert request.headers["Host"] == "localhost"
+    assert request.body == full_body.decode("utf-8")
+
+    mock_socket.sendall.assert_called_once_with(b"HTTP/1.1 200 OK\r\n\r\n")
+    mock_socket.close.assert_called_once()
+
+
+
+def test_handle_request_empty_request(server):
+    mock_socket = MagicMock()
+    mock_socket.recv.return_value = b"    "
+    mock_socket.getpeername.return_value = ("localhost", 12345)
+
+    mock_response = MagicMock()
+    mock_response.to_http.return_value = (
+        b"HTTP/1.1 400 Bad Request\r\n"
+        b"Content-Type: application/json\r\n"
+        b"Content-Length: 56\r\n\r\n"
+        b'{"error": "Empty request received.", "status_code": 400}'
+    )
+    server.router.get_handler = MagicMock()
+
+    server._handle_request(mock_socket)
+
+    server.router.get_handler.assert_not_called()
+    mock_socket.sendall.assert_called_once_with(
+        b"HTTP/1.1 400 Bad Request\r\n"
+        b"Content-Type: application/json\r\n"
+        b"Content-Length: 56\r\n\r\n"
+        b'{"error": "Empty request received.", "status_code": 400}'
+    )
+    mock_socket.close.assert_called_once()
+
+
+def test_handle_request_unexpected_error(server, mocker, caplog):
+    """
+    Test that _handle_request handles unexpected errors and returns a 500 response.
+    """
+    caplog.set_level(logging.CRITICAL)
+
+    # Przygotowanie socketu symulującego żądanie
+    mock_socket = MagicMock()
+    mock_socket.recv.return_value = (
+        b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
+    )
+    mock_socket.getpeername.return_value = ("127.0.0.1", 12345)
+
+    # Symulacja wyjątku w routerze
+    mocker.patch.object(
+        server.router, "get_handler", side_effect=Exception("Unexpected error")
+    )
+
+    # Wywołanie funkcji handle_request
+    server._handle_request(mock_socket)
+
+    # Sprawdzenie, czy wysłana została odpowiedź 500
+    mock_socket.sendall.assert_called_once()
+    sent_data = mock_socket.sendall.call_args[0][0]
+    expected_response = (
+        b"HTTP/1.1 500 Internal Server Error\r\nContent-Type: application/json\r\n"
+        b"Content-Length: 93\r\n\r\n"
+        b'{"error": "An unexpected error occurred.", "status_code": 500, '
+        b'"details": "Unexpected error"}'
+    )
+    assert sent_data == expected_response
+
+    # Sprawdzenie, czy socket został zamknięty
+    mock_socket.close.assert_called_once()
+
+    # Sprawdzenie logów
+    assert "Unexpected error occurred: Unexpected error" in caplog.text
+
+
+def test_receive_headers_complete(server):
+    """
+    Test that _receive_headers correctly assembles complete headers.
+    """
+    mock_socket = MagicMock()
+    mock_socket.recv.side_effect = [
+        b"GET / HTTP/1.1\r\nHost: localhost\r\n",
+        b"Content-Length: 0\r\n\r\n",
+    ]
+
+    headers = server._receive_headers(mock_socket)
+
+    assert headers == (
+        b"GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n"
+    )
+
+def test_receive_headers_empty_request(server):
+    """
+    Test that _receive_headers raises BadRequestError for an empty request.
+    """
+    mock_socket = MagicMock()
+    mock_socket.recv.side_effect = [b"   "]
+
+    with pytest.raises(BadRequestError, match="Empty request received."):
+        server._receive_headers(mock_socket)
+
+
+def test_receive_body_incomplete_body(server):
+    """
+    Test that _receive_body raises BadRequestError for an incomplete body.
+    """
+    body_start = b"partial_body"
+    content_length = 20
+    mock_socket = MagicMock()
+
+    mock_socket.recv.side_effect = [b"more_data"]
+
+    with pytest.raises(
+        BadRequestError,
+        match=(
+            f"Incomplete body received: expected {content_length}, "
+            f"got {len(body_start) + len(b'more_data')}"
+        ),
+    ):
+        server._receive_body(mock_socket, body_start, content_length)
 
 
 def test_route(server):
@@ -176,69 +324,6 @@ def test_stop_when_already_stopped(server, mocker):
 
     mock_server_socket.close.assert_not_called()
     mock_executor.shutdown.assert_not_called()
-
-
-def test_handle_request_empty_request(server, mocker):
-    mock_socket = MagicMock()
-    mock_socket.recv.return_value = b"    "
-
-    mock_response = mocker.patch("funnel.response.Response")
-    mock_response.return_value.to_http.return_value = (
-        b"HTTP/1.1 400 Bad Request\r\n"
-        b"Content-Type: application/json\r\n"
-        b"Content-Length: 56\r\n\r\n"
-        b'{"error": "Empty request received.", "status_code": 400}'
-    )
-    mock_response.return_value.status_code = 400
-
-    mock_request = mocker.patch("funnel.request.Request")
-
-    server._handle_request(mock_socket)
-
-    mock_request.assert_not_called()
-    mock_socket.sendall.assert_called_once_with(
-        b"HTTP/1.1 400 Bad Request\r\n"
-        b"Content-Type: application/json\r\n"
-        b"Content-Length: 56\r\n\r\n"
-        b'{"error": "Empty request received.", "status_code": 400}'
-    )
-    mock_socket.close.assert_called_once()
-
-
-def test_handle_request_unexpected_error(server, mocker, caplog):
-    caplog.set_level(logging.CRITICAL)
-
-    mock_socket = MagicMock()
-    mock_socket.recv.return_value = (
-        b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
-    )
-    mock_socket.getpeername.return_value = ("127.0.0.1", 12345)
-
-    mocker.patch.object(
-        server.router, "get_handler", side_effect=Exception("Unexpected error")
-    )
-
-    mock_response = mocker.patch("funnel.response.Response")
-    mock_response.return_value.to_http.return_value = (
-        b"HTTP/1.1 500 Internal Server Error\r\nContent-Type: "
-        b"application/json\r\nContent-Length: 93\r\n\r\n"
-        b'{"error": "An unexpected error occurred.", "status_code": 500, '
-        b'"details": "Unexpected error"}'
-    )
-
-    server._handle_request(mock_socket)
-
-    mock_socket.sendall.assert_called_once_with(
-        b"HTTP/1.1 500 Internal Server Error\r\nContent-Type: "
-        b"application/json\r\nContent-Length: 93\r\n\r\n"
-        b'{"error": "An unexpected error occurred.", "status_code": 500, '
-        b'"details": "Unexpected error"}'
-    )
-
-    mock_socket.close.assert_called_once()
-
-    assert "Unexpected error occurred: Unexpected error" in caplog.text
-
 
 def test_oserror_when_stopped(server, mocker, caplog):
     caplog.set_level(logging.INFO, logger="HTTP Server")
@@ -336,3 +421,6 @@ def test_get_mounted_directories_none_directory(server):
     ]
     result = server.get_mounted_directories()
     assert result == ["/var/www/html"]
+
+
+

@@ -11,6 +11,8 @@ from funnel.request import Request
 from funnel.router import Router
 from funnel.utils import load_config, mount_directories
 
+BUFFER_SIZE = 1024
+
 rotating_file_handler = RotatingFileHandler(
     "logs/server.log", maxBytes=5 * 1024 * 1024
 )
@@ -115,18 +117,23 @@ class HTTPServer:
 
     def _handle_request(self, client_socket: socket.socket) -> None:
         """
-        Handle an incoming HTTP request.
+        Handle an incoming HTTP request with Content-Length validation.
 
         Args:
             client_socket (socket.socket): The client's socket connection.
-            client_address (tuple): The client's (IP, port) address.
         """
         try:
-            raw_request = client_socket.recv(1024).decode("utf-8")
-            if not raw_request.strip():
-                raise BadRequestError("Empty request received.")
+            client_socket.settimeout(5)
+            raw_request = self._receive_headers(client_socket)
 
-            request = Request(raw_request)
+            headers, body_start = raw_request.split(b"\r\n\r\n", 1)
+            headers_str = headers.decode("utf-8")
+            headers_dict = self._parse_headers(headers_str)
+
+            content_length = int(headers_dict.get("Content-Length", 0))
+            body = self._receive_body(client_socket, body_start, content_length)
+
+            request = Request((headers + b"\r\n\r\n" + body).decode("utf-8"))
             client_ip, client_port = client_socket.getpeername()
             logger.info(
                 f"Parsed request: Method={request.method}, "
@@ -154,9 +161,84 @@ class HTTPServer:
             )
             response = error.to_http_response()
         finally:
-            logger.info(f"Sending response:  Status={response.status_code}")
+            logger.info(f"Sending response: Status={response.status_code}")
             client_socket.sendall(response.to_http())
             client_socket.close()
+
+    def _receive_headers(self, client_socket: socket.socket) -> bytes:
+        """
+        Receive HTTP headers from the client socket until the end of headers marker is found.
+
+        Args:
+            client_socket (socket.socket): The client's socket connection.
+
+        Returns:
+            bytes: The raw HTTP headers.
+
+        Raises:
+            BadRequestError: If the request is empty.
+        """
+        raw_headers = b""
+
+        while True:
+            chunk = client_socket.recv(BUFFER_SIZE)
+            if not chunk.strip():
+                raise BadRequestError("Empty request received.")
+            raw_headers += chunk
+
+            if b"\r\n\r\n" in raw_headers:
+                break
+
+        return raw_headers
+
+    def _receive_body(
+    self, client_socket: socket.socket, body_start: bytes, content_length: int
+) -> bytes:
+        """
+        Receive the remaining body of the HTTP request.
+
+        Args:
+            client_socket (socket.socket): The client's socket connection.
+            body_start (bytes): The initial part of the body received with headers.
+            content_length (int): The total expected length of the body.
+
+        Returns:
+            bytes: The complete body of the HTTP request.
+
+        Raises:
+            BadRequestError: If the body is incomplete.
+        """
+        body = body_start
+
+        while len(body) < content_length:
+            chunk = client_socket.recv(BUFFER_SIZE)
+            body += chunk
+
+        if len(body) != content_length:
+            raise BadRequestError(
+                f"Incomplete body received: expected {content_length}, got {len(body)}"
+            )
+
+        return body
+
+
+
+    def _parse_headers(self, headers_str: str) -> dict:
+        """
+        Parse raw HTTP headers into a dictionary.
+
+        Args:
+            headers_str (str): Raw HTTP headers as a string.
+
+        Returns:
+            dict: Parsed headers.
+        """
+        headers = {}
+        for line in headers_str.split("\r\n"):
+            if ":" in line:
+                key, value = line.split(":", 1)
+                headers[key.strip()] = value.strip()
+        return headers
 
     def route(
         self, path: str, *, methods: list[str], host: Optional[str] = None
@@ -175,7 +257,9 @@ class HTTPServer:
         return self.router.route(path, methods=methods, host=host)
 
     def get_mounted_directories(self):
-        return list(filter(
-            lambda x: x is not None,
-            [dir.get("directory") for dir in self._mounted_directories],
-        ))
+        return list(
+            filter(
+                lambda x: x is not None,
+                [dir.get("directory") for dir in self._mounted_directories],
+            )
+        )
