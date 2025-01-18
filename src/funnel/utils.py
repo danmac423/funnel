@@ -1,15 +1,13 @@
 """
 Utility functions for Funnel.
 """
-import json
 import os
 from mimetypes import guess_type
 from typing import Callable
 
 import yaml
 
-from funnel.exceptions import BadRequestError, NotFoundError
-from funnel.request import Request
+from funnel.exceptions import NotFoundError
 from funnel.response import Response
 from funnel.router import Router
 
@@ -188,52 +186,3 @@ def load_config(file_path: str) -> dict:
         raise IsADirectoryError(f"{file_path} is a directory")
     except yaml.YAMLError as e:
         raise ValueError(f"Error parsing YAML file: {e}")
-
-def remove_file(server, request: Request):
-    mounted_directories = server.get_mounted_directories()
-    removed = False
-
-    if not isinstance(request.parsed_body, dict):
-        raise BadRequestError("Body: Invalid request body (Not a dict).")
-
-    in_path = request.parsed_body["path"]
-
-    for dir in mounted_directories:
-        dir = os.path.abspath(dir)
-        if dir[-1] != os.path.sep:
-            dir += os.path.sep
-        requested_path = os.path.abspath(os.path.join(dir, in_path))
-
-        if not requested_path.startswith(dir):
-            continue
-
-        if os.path.isfile(requested_path):
-            os.remove(requested_path)
-            removed = True
-    if not removed:
-        raise NotFoundError("File not found.")
-
-
-def save_json(server, request: Request):
-    mounted_directories = server.get_mounted_directories()
-
-    target_path = os.path.abspath(request.query_params.get("path"))
-    common_paths = [
-        os.path.commonpath([target_path, os.path.abspath(d)])
-        for d in mounted_directories
-    ]
-    if not any(common_paths):
-        raise BadRequestError("Target path is not within a mounted directory.")
-
-    file_data = request.body
-
-    try:
-        json_data = json.loads(file_data)
-    except json.JSONDecodeError as e:
-        raise BadRequestError(f"Invalid JSON format: {e}")
-
-    try:
-        with open(target_path, "w", encoding="utf-8") as file:
-            json.dump(json_data, file, indent=4)
-    except Exception as e:
-        raise BadRequestError(f"Failed to save file: {e}")
