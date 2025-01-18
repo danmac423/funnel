@@ -151,7 +151,7 @@ class Request:
         if self.method in {"POST"} and not body:
             raise BadRequestError("Missing body content in request.")
 
-        if self.method in {"GET", "DELETE", "HEAD", "OPTIONS"}:
+        if self.method in {"GET", "DELETE"}:
             return body if body else None
 
         return body if body else None
