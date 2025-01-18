@@ -248,3 +248,81 @@ def test_internal_error():
         assert response.status_code == 500
     finally:
         process.terminate()
+
+
+def test_post_invalid_json():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        for _ in range(10):
+            try:
+                payload = '{"key": "value", "data": true,'  # Malformed JSON
+                response = requests.post(
+                    "http://127.0.0.1:8080/data",
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 400
+        response_json = response.json()
+        assert "error" in response_json
+        assert "Invalid JSON" in response_json["error"]
+    finally:
+        process.terminate()
+
+
+def test_post_large_json():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        large_payload = {"key": "value" * 10000}  # Large JSON payload
+        for _ in range(10):
+            try:
+                response = requests.post(
+                    "http://127.0.0.1:8080/data",
+                    json=large_payload,
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 201
+        response_json = response.json()
+        assert response_json["message"] == "Data received"
+    finally:
+        process.terminate()
+
+
+def test_post_empty_body():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.post(
+                    "http://127.0.0.1:8080/data",
+                    data="",  # No body
+                    headers={"Content-Type": "application/json"},
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 400
+        response_json = response.json()
+        assert "error" in response_json
+        assert "Missing body content in request" in response_json["error"]
+    finally:
+        process.terminate()
