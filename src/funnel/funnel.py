@@ -11,6 +11,8 @@ from funnel.request import Request
 from funnel.router import Router
 from funnel.utils import load_config, mount_directories
 
+BUFFER_SIZE = 1024
+
 rotating_file_handler = RotatingFileHandler(
     "logs/server.log", maxBytes=5 * 1024 * 1024
 )
@@ -121,11 +123,10 @@ class HTTPServer:
             client_socket (socket.socket): The client's socket connection.
         """
         try:
-            buffer_size = 1024
             raw_request = b""
 
             while True:
-                chunk = client_socket.recv(buffer_size)
+                chunk = client_socket.recv(BUFFER_SIZE)
                 if not chunk.strip():
                     raise BadRequestError("Empty request received.")
                 raw_request += chunk
@@ -141,7 +142,7 @@ class HTTPServer:
             body = body_start
 
             while len(body) < content_length:
-                chunk = client_socket.recv(buffer_size)
+                chunk = client_socket.recv(BUFFER_SIZE)
                 if not chunk:
                     break
                 body += chunk

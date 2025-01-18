@@ -218,26 +218,16 @@ def save_json(server, request: Request):
     mounted_directories = server.get_mounted_directories()
 
     target_path = os.path.abspath(request.query_params.get("path"))
-    com = [os.path.commonpath([target_path, os.path.abspath(d)]) for d in mounted_directories]
-    if not any(com):
+    common_paths = [
+        os.path.commonpath([target_path, os.path.abspath(d)])
+        for d in mounted_directories
+    ]
+    if not any(common_paths):
         raise BadRequestError("Target path is not within a mounted directory.")
-
-    # print(request.body)
-    # file_data = request.body.encode('utf-8')
-
-    # if not isinstance(file_data, bytes):
-    #     raise BadRequestError("'file' must contain binary data.")
-
-    # try:
-    #     with open(target_path, "wb") as file:
-    #         file.write(file_data)
-    # except Exception as e:
-    #     raise BadRequestError(f"Failed to save file: {e}")
 
     file_data = request.body
 
     try:
-        # Parse the body as JSON
         json_data = json.loads(file_data)
     except json.JSONDecodeError as e:
         raise BadRequestError(f"Invalid JSON format: {e}")

@@ -1,7 +1,7 @@
 from funnel.auth import Auth
 from funnel.funnel import HTTPServer
-from funnel.response import Response
 from funnel.request import Request
+from funnel.response import Response
 from funnel.user_source import JsonUserSource
 from funnel.utils import remove_file, save_json
 
