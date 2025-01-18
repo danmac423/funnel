@@ -112,6 +112,7 @@ class Request:
         """
         try:
             parsed_url = urllib.parse.urlparse(self.path)
+            self.path = self.path.split("?")[0]
             return dict(
                 urllib.parse.parse_qsl(parsed_url.query, strict_parsing=True)
             )

@@ -115,18 +115,43 @@ class HTTPServer:
 
     def _handle_request(self, client_socket: socket.socket) -> None:
         """
-        Handle an incoming HTTP request.
+        Handle an incoming HTTP request with Content-Length validation.
 
         Args:
             client_socket (socket.socket): The client's socket connection.
-            client_address (tuple): The client's (IP, port) address.
         """
         try:
-            raw_request = client_socket.recv(1024).decode("utf-8")
-            if not raw_request.strip():
-                raise BadRequestError("Empty request received.")
+            buffer_size = 1024
+            raw_request = b""
 
-            request = Request(raw_request)
+            while True:
+                chunk = client_socket.recv(buffer_size)
+                if not chunk.strip():
+                    raise BadRequestError("Empty request received.")
+                raw_request += chunk
+
+                if b"\r\n\r\n" in raw_request:
+                    break
+
+            headers, body_start = raw_request.split(b"\r\n\r\n", 1)
+            headers_str = headers.decode("utf-8")
+            headers_dict = self._parse_headers(headers_str)
+
+            content_length = int(headers_dict.get("Content-Length", 0))
+            body = body_start
+
+            while len(body) < content_length:
+                chunk = client_socket.recv(buffer_size)
+                if not chunk:
+                    break
+                body += chunk
+
+            if len(body) != content_length:
+                raise BadRequestError(
+                    f"Incomplete body received: expected {content_length}, got {len(body)}"  # noqa
+                )
+
+            request = Request((headers + b"\r\n\r\n" + body).decode("utf-8"))
             client_ip, client_port = client_socket.getpeername()
             logger.info(
                 f"Parsed request: Method={request.method}, "
@@ -154,9 +179,26 @@ class HTTPServer:
             )
             response = error.to_http_response()
         finally:
-            logger.info(f"Sending response:  Status={response.status_code}")
+            logger.info(f"Sending response: Status={response.status_code}")
             client_socket.sendall(response.to_http())
             client_socket.close()
+
+    def _parse_headers(self, headers_str: str) -> dict:
+        """
+        Parse raw HTTP headers into a dictionary.
+
+        Args:
+            headers_str (str): Raw HTTP headers as a string.
+
+        Returns:
+            dict: Parsed headers.
+        """
+        headers = {}
+        for line in headers_str.split("\r\n"):
+            if ":" in line:
+                key, value = line.split(":", 1)
+                headers[key.strip()] = value.strip()
+        return headers
 
     def route(
         self, path: str, *, methods: list[str], host: Optional[str] = None
@@ -175,7 +217,9 @@ class HTTPServer:
         return self.router.route(path, methods=methods, host=host)
 
     def get_mounted_directories(self):
-        return list(filter(
-            lambda x: x is not None,
-            [dir.get("directory") for dir in self._mounted_directories],
-        ))
+        return list(
+            filter(
+                lambda x: x is not None,
+                [dir.get("directory") for dir in self._mounted_directories],
+            )
+        )

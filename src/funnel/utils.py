@@ -1,7 +1,7 @@
 """
 Utility functions for Funnel.
 """
-
+import json
 import os
 from mimetypes import guess_type
 from typing import Callable
@@ -203,7 +203,7 @@ def remove_file(server, request: Request):
         if dir[-1] != os.path.sep:
             dir += os.path.sep
         requested_path = os.path.abspath(os.path.join(dir, in_path))
-        
+
         if not requested_path.startswith(dir):
             continue
 
@@ -212,3 +212,38 @@ def remove_file(server, request: Request):
             removed = True
     if not removed:
         raise NotFoundError("File not found.")
+
+
+def save_json(server, request: Request):
+    mounted_directories = server.get_mounted_directories()
+
+    target_path = os.path.abspath(request.query_params.get("path"))
+    com = [os.path.commonpath([target_path, os.path.abspath(d)]) for d in mounted_directories]
+    if not any(com):
+        raise BadRequestError("Target path is not within a mounted directory.")
+
+    # print(request.body)
+    # file_data = request.body.encode('utf-8')
+
+    # if not isinstance(file_data, bytes):
+    #     raise BadRequestError("'file' must contain binary data.")
+
+    # try:
+    #     with open(target_path, "wb") as file:
+    #         file.write(file_data)
+    # except Exception as e:
+    #     raise BadRequestError(f"Failed to save file: {e}")
+
+    file_data = request.body
+
+    try:
+        # Parse the body as JSON
+        json_data = json.loads(file_data)
+    except json.JSONDecodeError as e:
+        raise BadRequestError(f"Invalid JSON format: {e}")
+
+    try:
+        with open(target_path, "w", encoding="utf-8") as file:
+            json.dump(json_data, file, indent=4)
+    except Exception as e:
+        raise BadRequestError(f"Failed to save file: {e}")

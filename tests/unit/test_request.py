@@ -13,7 +13,7 @@ def test_valid_get_request():
     request = Request(raw_request)
 
     assert request.method == "GET"
-    assert request.path == "/api/resource?key=value"
+    assert request.path == "/api/resource"
     assert request.protocol == "HTTP/1.1"
     assert request.headers == {
         "Host": "localhost:8080",

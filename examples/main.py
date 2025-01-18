@@ -1,8 +1,9 @@
 from funnel.auth import Auth
 from funnel.funnel import HTTPServer
 from funnel.response import Response
+from funnel.request import Request
 from funnel.user_source import JsonUserSource
-from funnel.utils import remove_file
+from funnel.utils import remove_file, save_json
 
 auth = Auth()
 auth.configure_user_source(JsonUserSource("users.json"))
@@ -67,11 +68,23 @@ def protected_endpoint_basic(request):
 @server.route("/data", methods=["GET", "POST"])
 def handle_data(request):
     return Response.json(
-        201,
+        206,
         "Created",
         {"message": "Data received", "data": request.parsed_body},
     )
 
+@server.route("/save_json", methods=["POST"])
+def post_data(request: Request):
+    save_json(server, request)
+    return Response.json(
+        206,
+        "Created",
+        {
+            "message": "Data received",
+            "path": request.query_params.get("path"),
+            "data": request.parsed_body
+        },
+    )
 
 @server.route("/data", methods=["DELETE"])
 def delete_data(request):
