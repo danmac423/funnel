@@ -75,7 +75,7 @@ def directory_handler_factory(base_directory: str, base_path: str) -> Callable:
             return serve_directory(requested_path, request.path)
 
         if os.path.isfile(requested_path):
-            return serve_file_with_range(requested_path, request)
+            return serve_file(requested_path, request)
 
         raise NotFoundError("File or directory not found.")
 
@@ -136,39 +136,6 @@ def serve_directory(directory_path: str, request_path: str) -> Response:
         raise NotFoundError(f"Error reading folder: {directory_path}")
 
 
-def serve_file(file_path: str) -> Response:
-    """
-    Generate a response for serving a file.
-
-    Args:
-        file_path (str): The file to serve.
-
-    Returns:
-        Response: Response with the file content and headers.
-    """
-    try:
-        with open(file_path, "rb") as file:
-            content = file.read()
-
-        content_type, _ = guess_type(file_path)
-        if not content_type:
-            content_type = "application/octet-stream"
-
-        filename = os.path.basename(file_path)
-        headers = {
-            "Content-Type": content_type,
-            "Content-Disposition": f'attachment; filename="{filename}"',
-            "Content-Length": str(len(content)),
-        }
-
-        return Response(
-            status_code=200, reason="OK", headers=headers, body=content
-        )
-
-    except Exception as e:
-        raise NotFoundError(f"Error reading file: {file_path}") from e
-
-
 def load_config(file_path: str) -> dict:
     """
     Load server configuration from a YAML file.
@@ -190,7 +157,7 @@ def load_config(file_path: str) -> dict:
         raise ValueError(f"Error parsing YAML file: {e}")
 
 
-def serve_file_with_range(file_path: str, request: Request) -> Response:
+def serve_file(file_path: str, request: Request) -> Response:
     """
     Generate a response for serving a file with optional Range support.
 

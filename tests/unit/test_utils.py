@@ -13,7 +13,6 @@ from funnel.utils import (
     resolve_requested_path,
     serve_directory,
     serve_file,
-    serve_file_with_range,
 )
 
 
@@ -146,7 +145,9 @@ def test_serve_file_valid(tmp_path):
     file = tmp_path / "file.txt"
     file.write_text("Hello, World!")
 
-    response = serve_file(str(file))
+    request = create_mock_request(file)
+
+    response = serve_file(str(file), request)
     assert response.status_code == 200
     assert response.body == b"Hello, World!"
     assert response.headers["Content-Type"] == "text/plain"
@@ -156,7 +157,9 @@ def test_serve_file_binary(tmp_path):
     file = tmp_path / "image.jpg"
     file.write_bytes(b"binary content")
 
-    response = serve_file(str(file))
+    request = create_mock_request(file)
+
+    response = serve_file(str(file), request)
     assert response.status_code == 200
     assert response.body == b"binary content"
     assert response.headers["Content-Type"] == "image/jpeg"
@@ -166,7 +169,9 @@ def test_serve_file_non_standard(tmp_path):
     file = tmp_path / "file.non_standard"
     file.write_text("Hello, World!")
 
-    response = serve_file(str(file))
+    request = create_mock_request(file)
+
+    response = serve_file(str(file), request)
     assert response.status_code == 200
     assert response.body == b"Hello, World!"
     assert response.headers["Content-Type"] == "application/octet-stream"
@@ -176,10 +181,13 @@ def test_serve_file_read_error(tmp_path, mocker):
     file = tmp_path / "file.txt"
     file.write_text("content")
 
-    mocker.patch("builtins.open", side_effect=OSError("Read error"))
+    request = create_mock_request(str(file))
 
-    with pytest.raises(NotFoundError, match="Error reading file:"):
-        serve_file(str(file))
+    # mocker.patch("builtins.open", side_effect=OSError("Read error"))
+
+    with patch("builtins.open", side_effect=OSError("Read error")):
+        with pytest.raises(BadRequestError, match="Error reading file:"):
+            serve_file(str(file), request)
 
 
 def test_directory_handler_factory_for_directory(tmp_path):
@@ -226,7 +234,7 @@ def test_serve_file_with_range_full_file(tmp_path):
     request = MagicMock()
     request.headers = {}
 
-    response = serve_file_with_range(str(file_path), request)
+    response = serve_file(str(file_path), request)
 
     assert response.status_code == 200
     assert response.headers["Content-Length"] == str(file_path.stat().st_size)
@@ -240,7 +248,7 @@ def test_serve_file_with_range_partial(tmp_path):
     request = MagicMock()
     request.headers = {"Range": "bytes=7-20"}
 
-    response = serve_file_with_range(str(file_path), request)
+    response = serve_file(str(file_path), request)
 
     assert response.status_code == 206
     assert response.headers["Content-Range"] == "bytes 7-20/27"
@@ -256,7 +264,7 @@ def test_serve_file_with_range_invalid_range(tmp_path):
     request.headers = {"Range": "bytes=50-60"}
 
     with pytest.raises(BadRequestError, match="Invalid byte range."):
-        serve_file_with_range(str(file_path), request)
+        serve_file(str(file_path), request)
 
 
 def test_serve_file_with_range_header_format(tmp_path):
@@ -267,7 +275,7 @@ def test_serve_file_with_range_header_format(tmp_path):
     request.headers = {"Range": "bytes="}
 
     with pytest.raises(BadRequestError, match="Invalid Range header format."):
-        serve_file_with_range(str(file_path), request)
+        serve_file(str(file_path), request)
 
 
 def test_serve_file_with_range_no_file():
@@ -277,4 +285,4 @@ def test_serve_file_with_range_no_file():
     request.headers = {"Range": "bytes=1-10"}
 
     with pytest.raises(NotFoundError, match=f"File not found: {non_existent_file_path}"):
-        serve_file_with_range(non_existent_file_path, request)
+        serve_file(non_existent_file_path, request)
