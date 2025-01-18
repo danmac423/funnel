@@ -123,34 +123,15 @@ class HTTPServer:
             client_socket (socket.socket): The client's socket connection.
         """
         try:
-            raw_request = b""
-
-            while True:
-                chunk = client_socket.recv(BUFFER_SIZE)
-                if not chunk.strip():
-                    raise BadRequestError("Empty request received.")
-                raw_request += chunk
-
-                if b"\r\n\r\n" in raw_request:
-                    break
+            client_socket.settimeout(5)
+            raw_request = self._receive_headers(client_socket)
 
             headers, body_start = raw_request.split(b"\r\n\r\n", 1)
             headers_str = headers.decode("utf-8")
             headers_dict = self._parse_headers(headers_str)
 
             content_length = int(headers_dict.get("Content-Length", 0))
-            body = body_start
-
-            while len(body) < content_length:
-                chunk = client_socket.recv(BUFFER_SIZE)
-                if not chunk:
-                    break
-                body += chunk
-
-            if len(body) != content_length:
-                raise BadRequestError(
-                    f"Incomplete body received: expected {content_length}, got {len(body)}"  # noqa
-                )
+            body = self._receive_body(client_socket, body_start, content_length)
 
             request = Request((headers + b"\r\n\r\n" + body).decode("utf-8"))
             client_ip, client_port = client_socket.getpeername()
@@ -183,6 +164,64 @@ class HTTPServer:
             logger.info(f"Sending response: Status={response.status_code}")
             client_socket.sendall(response.to_http())
             client_socket.close()
+
+    def _receive_headers(self, client_socket: socket.socket) -> bytes:
+        """
+        Receive HTTP headers from the client socket until the end of headers marker is found.
+
+        Args:
+            client_socket (socket.socket): The client's socket connection.
+
+        Returns:
+            bytes: The raw HTTP headers.
+
+        Raises:
+            BadRequestError: If the request is empty.
+        """
+        raw_headers = b""
+
+        while True:
+            chunk = client_socket.recv(BUFFER_SIZE)
+            if not chunk.strip():
+                raise BadRequestError("Empty request received.")
+            raw_headers += chunk
+
+            if b"\r\n\r\n" in raw_headers:
+                break
+
+        return raw_headers
+
+    def _receive_body(
+    self, client_socket: socket.socket, body_start: bytes, content_length: int
+) -> bytes:
+        """
+        Receive the remaining body of the HTTP request.
+
+        Args:
+            client_socket (socket.socket): The client's socket connection.
+            body_start (bytes): The initial part of the body received with headers.
+            content_length (int): The total expected length of the body.
+
+        Returns:
+            bytes: The complete body of the HTTP request.
+
+        Raises:
+            BadRequestError: If the body is incomplete.
+        """
+        body = body_start
+
+        while len(body) < content_length:
+            chunk = client_socket.recv(BUFFER_SIZE)
+            body += chunk
+
+        if len(body) != content_length:
+            raise BadRequestError(
+                f"Incomplete body received: expected {content_length}, got {len(body)}"
+            )
+
+        return body
+
+
 
     def _parse_headers(self, headers_str: str) -> dict:
         """
