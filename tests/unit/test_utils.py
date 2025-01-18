@@ -1,9 +1,9 @@
 import os
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from funnel.exceptions import NotFoundError
+from funnel.exceptions import BadRequestError, NotFoundError
 from funnel.request import Request
 from funnel.router import Router
 from funnel.utils import (
@@ -145,7 +145,9 @@ def test_serve_file_valid(tmp_path):
     file = tmp_path / "file.txt"
     file.write_text("Hello, World!")
 
-    response = serve_file(str(file))
+    request = create_mock_request(file)
+
+    response = serve_file(str(file), request)
     assert response.status_code == 200
     assert response.body == b"Hello, World!"
     assert response.headers["Content-Type"] == "text/plain"
@@ -155,7 +157,9 @@ def test_serve_file_binary(tmp_path):
     file = tmp_path / "image.jpg"
     file.write_bytes(b"binary content")
 
-    response = serve_file(str(file))
+    request = create_mock_request(file)
+
+    response = serve_file(str(file), request)
     assert response.status_code == 200
     assert response.body == b"binary content"
     assert response.headers["Content-Type"] == "image/jpeg"
@@ -165,7 +169,9 @@ def test_serve_file_non_standard(tmp_path):
     file = tmp_path / "file.non_standard"
     file.write_text("Hello, World!")
 
-    response = serve_file(str(file))
+    request = create_mock_request(file)
+
+    response = serve_file(str(file), request)
     assert response.status_code == 200
     assert response.body == b"Hello, World!"
     assert response.headers["Content-Type"] == "application/octet-stream"
@@ -175,10 +181,13 @@ def test_serve_file_read_error(tmp_path, mocker):
     file = tmp_path / "file.txt"
     file.write_text("content")
 
-    mocker.patch("builtins.open", side_effect=OSError("Read error"))
+    request = create_mock_request(str(file))
 
-    with pytest.raises(NotFoundError, match="Error reading file:"):
-        serve_file(str(file))
+    # mocker.patch("builtins.open", side_effect=OSError("Read error"))
+
+    with patch("builtins.open", side_effect=OSError("Read error")):
+        with pytest.raises(BadRequestError, match="Error reading file:"):
+            serve_file(str(file), request)
 
 
 def test_directory_handler_factory_for_directory(tmp_path):
@@ -216,3 +225,64 @@ def test_directory_handler_factory_nonexistent_path(tmp_path):
     nonexistent_path = tmp_path / "nonexistent"
     with pytest.raises(ValueError):
         directory_handler_factory(str(nonexistent_path), "/static")
+
+
+def test_serve_file_with_range_full_file(tmp_path):
+    file_path = tmp_path / "test.txt"
+    file_path.write_text("Hello, this is a test file!")
+
+    request = MagicMock()
+    request.headers = {}
+
+    response = serve_file(str(file_path), request)
+
+    assert response.status_code == 200
+    assert response.headers["Content-Length"] == str(file_path.stat().st_size)
+    assert response.body == b"Hello, this is a test file!"
+
+
+def test_serve_file_with_range_partial(tmp_path):
+    file_path = tmp_path / "test.txt"
+    file_path.write_text("Hello, this is a test file!")
+
+    request = MagicMock()
+    request.headers = {"Range": "bytes=7-20"}
+
+    response = serve_file(str(file_path), request)
+
+    assert response.status_code == 206
+    assert response.headers["Content-Range"] == "bytes 7-20/27"
+    assert response.body == b"this is a test"
+
+
+
+def test_serve_file_with_range_invalid_range(tmp_path):
+    file_path = tmp_path / "test.txt"
+    file_path.write_text("Hello, this is a test file!")
+
+    request = MagicMock()
+    request.headers = {"Range": "bytes=50-60"}
+
+    with pytest.raises(BadRequestError, match="Invalid byte range."):
+        serve_file(str(file_path), request)
+
+
+def test_serve_file_with_range_header_format(tmp_path):
+    file_path = tmp_path / "test.txt"
+    file_path.write_text("Hello, this is a test file!")
+
+    request = MagicMock()
+    request.headers = {"Range": "bytes="}
+
+    with pytest.raises(BadRequestError, match="Invalid Range header format."):
+        serve_file(str(file_path), request)
+
+
+def test_serve_file_with_range_no_file():
+    non_existent_file_path = "/path/to/non_existent_file.txt"
+
+    request = MagicMock()
+    request.headers = {"Range": "bytes=1-10"}
+
+    with pytest.raises(NotFoundError, match=f"File not found: {non_existent_file_path}"):
+        serve_file(non_existent_file_path, request)
