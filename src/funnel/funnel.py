@@ -1,29 +1,17 @@
-import logging
 import signal
 import socket
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
-from logging.handlers import RotatingFileHandler
 from typing import Callable, Optional
 
 from funnel.exceptions import BadRequestError, FunnelError
+from funnel.logger import ClientAddressFilter, logger
 from funnel.request import Request
 from funnel.router import Router
 from funnel.utils import load_config, mount_directories
 
 BUFFER_SIZE = 1024
-
-rotating_file_handler = RotatingFileHandler(
-    "logs/server.log", maxBytes=5 * 1024 * 1024
-)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[rotating_file_handler, logging.StreamHandler()],
-)
-
-logger = logging.getLogger("HTTP Server")
 
 
 class HTTPServer:
@@ -122,7 +110,11 @@ class HTTPServer:
         Args:
             client_socket (socket.socket): The client's socket connection.
         """
+        client_ip, client_port = client_socket.getpeername()
+        client_filter = ClientAddressFilter(client_ip=client_ip, client_port=client_port)
+        logger.addFilter(client_filter)
         try:
+            start_time = time.perf_counter()
             client_socket.settimeout(5)
             raw_request = self._receive_headers(client_socket)
 
@@ -164,6 +156,10 @@ class HTTPServer:
             logger.info(f"Sending response: Status={response.status_code}")
             client_socket.sendall(response.to_http())
             client_socket.close()
+            end_time = time.perf_counter()
+            processing_time = end_time - start_time
+            logger.info(f"Request processed in {processing_time:.6f} seconds.")
+
 
     def _receive_headers(self, client_socket: socket.socket) -> bytes:
         """
