@@ -319,6 +319,53 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 
 ---
 
+## **Instrukcja uruchomienia**
+
+Projekt znajduję się na repozytorium https://gitlab-stud.elka.pw.edu.pl/npieczko/funnel.git. Jest instalowalny za pomocą managera pakietów *uv*.
+
+```
+$ git clone https://gitlab-stud.elka.pw.edu.pl/npieczko/funnel.git
+$ cd funnel
+$ uv sync
+$ uv pip install -e .
+```
+
+Nasza biblioteka umożliwia dodawanie ścieżek (route) przez dektorator. Aby uruchomić przykładowy serwer HTTP należy wywołać komendę:
+
+```
+$ python3 examples/main.py
+```
+
+---
+
+## **Opis interfejsu użytkownika**
+
+Zaimplementowany został dekorator *route*, który umożliwia dodanie ścieżki do serwera.
+
+Struktura:
+```python
+@server.route(<path>, <methods>, <host>)
+```
+
+**path** - adres ściezki
+
+**methods** - lista metod obsługiwanych pod daną ściezką
+
+**host** - opcjonalny argument oznaczający adres hosta. W przypadku gdy host jest zdefiniowany, żądzanie musi zawierać dokładną nazwę hosta, aby zostało odbrane. Jezeli host nie zostanie podany żądania będą obsługiwane nieżaleznie od wartości nagłówka Host.
+
+Przykład użycia:
+
+```python
+server = HTTPServer("./config/server_config.yaml")
+
+@server.route("/", methods=["GET", "POST"], host="example.com")
+def home_example(request):
+    return Response.html(
+        200, "OK", "<h1>Welcome to the Home Page of example.com host!</h1>"
+    )
+```
+---
+
 ## **Środowisko sprzętowo-programowe i narzędziowe**
 
 ### **1. Systemy operacyjne**
@@ -393,6 +440,7 @@ Testy jednostkowe sprawdzają poprawność działania poszczególnych komponent�
    - Testowanie mechanizmów autoryzacji (**Basic** i **Bearer Authorization**).
    - Generowanie odpowiedzi HTTP z poprawnymi nagłówkami i statusami.
    - Obsługa błędów (np. brak zasobu, nieprawidłowe żądanie).
+   - Obsługa nagłówka Range
 
 - **Narzędzie**:
    - **pytest** – główne narzędzie do automatyzacji testów jednostkowych.
@@ -417,37 +465,49 @@ Testy integracyjne sprawdzają współdziałanie głównych komponentów systemu
 ### **3. Testy manualne**
 Testy manualne pozwolą zweryfikować serwer z perspektywy użytkownika.
 - **Zakres testów**:
-   - Wysłanie żądań HTTP przy użyciu narzędzi **Postman** i **curl**.
+   - Wysłanie żądań HTTP przy użyciu narzędza **curl**.
    - Sprawdzenie udostępniania zasobów statycznych (pliki i katalogi).
    - Testowanie chronionych zasobów: poprawne i niepoprawne dane autoryzacyjne.
    - Weryfikacja obsługi sytuacji błędnych (404, 403, 500).
 
 - **Narzędzia**:
-   - **Postman** – graficzne narzędzie do wysyłania żądań HTTP.
    - **curl** – narzędzie wiersza poleceń do wysyłania żądań HTTP.
 
 ---
 
+### Wyniki testowania
+
+Napisane testy jednostkowe zapewniły porycie linii kodu na poziomie 100%. 
+
+
 ## **Podział pracy w zespole**
 
 ### **Daniel Machniak: Komunikacja sieciowa i konfiguracja**
+- Implementacja mechanizmu **routingu**:
+   - Mapowanie ścieżek HTTP na funkcje obsługi.
 - Implementacja mechanizmu **niskopoziomowej komunikacji** przy użyciu `socket`:
    - Tworzenie gniazd, nasłuchiwanie połączeń, akceptowanie klientów.
 - Dodanie obsługi wielowątkowości z wykorzystaniem **threading**.
-- Wczytywanie konfiguracji serwera (host, port, ścieżki) z pliku **YAML/TOML**.
+- Obsługa podstawowych metod HTTP (**GET**)
+- Implementacjia funkcjonalności montowania katalogów.
+- Przygotowanie **testów jednostkowych** i **testów integracyjnych** dla poszczególnych komponentów.
 
 ---
 
 ### **Krzysztof Gólcz: Routing i obsługa żądań**
-- Implementacja mechanizmu **routingu**:
-   - Mapowanie ścieżek HTTP na funkcje obsługi.
-- Obsługa podstawowych metod HTTP (**GET**, **POST**, **DELETE**)
+- Wczytywanie konfiguracji serwera (host, port, ścieżki) z pliku **YAML/TOML**.
+- Obsługa podstawowych metod HTTP (**DELETE**)
+- Implementacjia funkcjonalności montowania katalogów.
+- Przygotowanie **testów jednostkowych** i **testów integracyjnych** dla poszczególnych komponentów.
 
 ---
 
 ### **Natalia Pieczko: Autoryzacja, logowanie i testowanie**
 - Implementacja mechanizmów autoryzacji (**Basic Authorization**, **Bearer Authorization**).
+- Ulepszenie mechanizmu **niskopoziomowej komunikacji** umożliwiając przesyłanie większych porcji danych.
+- Obsługa podstawowych metod HTTP (**POST**)
 - Implementacja **logowania** żądań (adres IP, metoda, ścieżka, status odpowiedzi) i zapisu do pliku logów.
+- Dodanie mechnizmu obsługi nagłówka **Range**
 - Przygotowanie **testów jednostkowych** i **testów integracyjnych** dla poszczególnych komponentów.
 
 
@@ -552,3 +612,18 @@ Testy manualne pozwolą zweryfikować serwer z perspektywy użytkownika.
     - Logowanie i obsługa błędów.
 
 **Wynik tygodnia**: Gotowy, przetestowany serwer HTTP z dokumentacją i funkcjami do demonstracji.
+
+---
+
+## **Opis najważniejszych rozwiązań funkcjonalnych**
+
+
+---
+
+## **Postać plików konfiguracyjnych oraz logów**
+
+---
+
+## **Podsumowanie**
+
+---
