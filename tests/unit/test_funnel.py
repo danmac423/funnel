@@ -85,9 +85,7 @@ def test_stop(server, mocker):
 
 def test_handle_request(server, mocker):
     mock_socket = MagicMock()
-    mock_socket.recv.return_value = (
-        b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
-    )
+    mock_socket.recv.return_value = b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
     mock_socket.getpeername.return_value = ("localhost", 12345)
 
     mock_response = mocker.patch("funnel.response.Response")
@@ -113,11 +111,7 @@ def test_handle_request(server, mocker):
 
 
 def test_handle_request_large_body(server):
-    headers = (
-        b"POST /upload HTTP/1.1\r\n"
-        b"Host: localhost\r\n"
-        b"Content-Length: 4096\r\n\r\n"
-    )
+    headers = b"POST /upload HTTP/1.1\r\nHost: localhost\r\nContent-Length: 4096\r\n\r\n"
     body_chunk = b"A" * 1024
     full_body = body_chunk * 4
 
@@ -145,7 +139,6 @@ def test_handle_request_large_body(server):
 
     mock_socket.sendall.assert_called_once_with(b"HTTP/1.1 200 OK\r\n\r\n")
     mock_socket.close.assert_called_once()
-
 
 
 def test_handle_request_empty_request(server):
@@ -182,15 +175,11 @@ def test_handle_request_unexpected_error(server, mocker, caplog):
 
     # Przygotowanie socketu symulującego żądanie
     mock_socket = MagicMock()
-    mock_socket.recv.return_value = (
-        b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
-    )
+    mock_socket.recv.return_value = b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
     mock_socket.getpeername.return_value = ("127.0.0.1", 12345)
 
     # Symulacja wyjątku w routerze
-    mocker.patch.object(
-        server.router, "get_handler", side_effect=Exception("Unexpected error")
-    )
+    mocker.patch.object(server.router, "get_handler", side_effect=Exception("Unexpected error"))
 
     # Wywołanie funkcji handle_request
     server._handle_request(mock_socket)
@@ -225,9 +214,8 @@ def test_receive_headers_complete(server):
 
     headers = server._receive_headers(mock_socket)
 
-    assert headers == (
-        b"GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n"
-    )
+    assert headers == (b"GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n")
+
 
 def test_receive_headers_empty_request(server):
     """
@@ -267,9 +255,7 @@ def test_route(server):
     route_decorator = server.route("/test", methods=["GET"], host="localhost")
     route_decorator(MagicMock())
 
-    mock_router.route.assert_called_once_with(
-        "/test", methods=["GET"], host="localhost"
-    )
+    mock_router.route.assert_called_once_with("/test", methods=["GET"], host="localhost")
 
 
 def test_socket_timeout(server, mocker):
@@ -324,6 +310,7 @@ def test_stop_when_already_stopped(server, mocker):
 
     mock_server_socket.close.assert_not_called()
     mock_executor.shutdown.assert_not_called()
+
 
 def test_oserror_when_stopped(server, mocker, caplog):
     caplog.set_level(logging.INFO, logger="HTTP Server")

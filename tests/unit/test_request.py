@@ -75,9 +75,7 @@ def test_invalid_request_line():
 
 
 def test_missing_host_header():
-    raw_request = (
-        "GET /api/resource HTTP/1.1\r\nUser-Agent: TestClient\r\n\r\n"
-    )
+    raw_request = "GET /api/resource HTTP/1.1\r\nUser-Agent: TestClient\r\n\r\n"
     with pytest.raises(BadRequestError, match="Missing or empty Host header."):
         Request(raw_request)
 
@@ -96,37 +94,26 @@ def test_no_host_header():
 
 def test_multiple_same_headers():
     raw_request = (
-        "GET /api/resource HTTP/1.1\r\n"
-        "Host: localhost:8080\r\n"
-        "Host: localhost:8081\r\n\r\n"
+        "GET /api/resource HTTP/1.1\r\nHost: localhost:8080\r\nHost: localhost:8081\r\n\r\n"
     )
-    with pytest.raises(
-        BadRequestError, match="Multiple headers with same key: Host."
-    ):
+    with pytest.raises(BadRequestError, match="Multiple headers with same key: Host."):
         Request(raw_request)
 
 
 def test_empty_header_key():
     raw_request = "GET /api/resource HTTP/1.1\r\n: value\r\n\r\n"
-    with pytest.raises(
-        BadRequestError, match="Header key or value cannot be empty."
-    ):
+    with pytest.raises(BadRequestError, match="Header key or value cannot be empty."):
         Request(raw_request)
 
 
 def test_empty_header_value():
     raw_request = "GET /api/resource HTTP/1.1\r\nkey: \r\n\r\n"
-    with pytest.raises(
-        BadRequestError, match="Header key or value cannot be empty."
-    ):
+    with pytest.raises(BadRequestError, match="Header key or value cannot be empty."):
         Request(raw_request)
 
 
 def test_invalid_query_params():
-    raw_request = (
-        "GET /api/resource?key=value&badquery HTTP/1.1\r\n"
-        "Host: localhost:8080\r\n\r\n"
-    )
+    raw_request = "GET /api/resource?key=value&badquery HTTP/1.1\r\nHost: localhost:8080\r\n\r\n"
     with pytest.raises(
         BadRequestError,
         match="Invalid query parameters: bad query field: 'badquery'.",
@@ -135,86 +122,51 @@ def test_invalid_query_params():
 
 
 def test_parse_body_post_with_valid_body():
-    raw_request = (
-        "POST / HTTP/1.1\r\n"
-        "Host: example.com\r\n"
-        "Content-Length: 11\r\n"
-        "\r\n"
-        "Hello World"
-    )
+    raw_request = "POST / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 11\r\n\r\nHello World"
     request = Request(raw_request)
     assert request._parse_body() == "Hello World"
 
 
 def test_parse_body_post_with_missing_body_separator():
-    raw_request = (
-        "POST / HTTP/1.1\r\n" "Host: example.com\r\n" "Content-Length: 11"
-    )
-    with pytest.raises(
-        BadRequestError, match="Missing body separator in the request."
-    ):
+    raw_request = "POST / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 11"
+    with pytest.raises(BadRequestError, match="Missing body separator in the request."):
         Request(raw_request)
 
 
 def test_parse_body_get_with_missing_body_separator():
-    raw_request = (
-        "GET / HTTP/1.1\r\n" "Host: example.com\r\n" "Content-Length: 11"
-    )
+    raw_request = "GET / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 11"
     request = Request(raw_request)
     assert request.body is None
 
 
 def test_parse_body_post_with_mismatched_content_length():
-    raw_request = (
-        "POST / HTTP/1.1\r\n"
-        "Host: example.com\r\n"
-        "Content-Length: 5\r\n"
-        "\r\n"
-        "Too long body"
-    )
-    with pytest.raises(
-        BadRequestError, match="Content-Length does not match body length."
-    ):
+    raw_request = "POST / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 5\r\n\r\nToo long body"
+    with pytest.raises(BadRequestError, match="Content-Length does not match body length."):
         Request(raw_request)
 
 
 def test_parse_body_post_with_invalid_content_length():
     raw_request = (
-        "POST / HTTP/1.1\r\n"
-        "Host: example.com\r\n"
-        "Content-Length: invalid\r\n"
-        "\r\n"
-        "Hello World"
+        "POST / HTTP/1.1\r\nHost: example.com\r\nContent-Length: invalid\r\n\r\nHello World"
     )
-    with pytest.raises(
-        BadRequestError, match="Invalid Content-Length header."
-    ):
+    with pytest.raises(BadRequestError, match="Invalid Content-Length header."):
         Request(raw_request)
 
 
 def test_parse_body_post_with_empty_body():
-    raw_request = (
-        "POST / HTTP/1.1\r\n"
-        "Host: example.com\r\n"
-        "Content-Length: 0\r\n"
-        "\r\n"
-    )
-    with pytest.raises(
-        BadRequestError, match="Missing body content in request."
-    ):
+    raw_request = "POST / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 0\r\n\r\n"
+    with pytest.raises(BadRequestError, match="Missing body content in request."):
         Request(raw_request)
 
 
 def test_parse_body_get_with_no_body():
-    raw_request = "GET / HTTP/1.1\r\n" "Host: example.com\r\n" "\r\n"
+    raw_request = "GET / HTTP/1.1\r\nHost: example.com\r\n\r\n"
     request = Request(raw_request)
     assert request.body is None
 
 
 def test_parse_body_post_without_content_length():
-    raw_request = (
-        "POST / HTTP/1.1\r\n" "Host: example.com\r\n" "\r\n" "Hello World"
-    )
+    raw_request = "POST / HTTP/1.1\r\nHost: example.com\r\n\r\nHello World"
     request = Request(raw_request)
     assert request.body == "Hello World"
 
@@ -267,9 +219,7 @@ def test_parse_body_content_form_data_invalid():
         "Content-Length: 12\r\n\r\n"
         "key=value&id"
     )
-    with pytest.raises(
-        BadRequestError, match="Invalid form data in request body."
-    ):
+    with pytest.raises(BadRequestError, match="Invalid form data in request body."):
         Request(raw_request)
 
 
@@ -286,11 +236,6 @@ def test_parse_body_content_plain_text():
 
 
 def test_parse_body_content_no_content_type():
-    raw_request = (
-        "POST /test HTTP/1.1\r\n"
-        "Host: localhost\r\n"
-        "Content-Length: 11\r\n\r\n"
-        "Hello World"
-    )
+    raw_request = "POST /test HTTP/1.1\r\nHost: localhost\r\nContent-Length: 11\r\n\r\nHello World"
     request = Request(raw_request)
     assert request._parse_body_content() == "Hello World"

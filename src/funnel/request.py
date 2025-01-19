@@ -89,9 +89,7 @@ class Request:
                 raise BadRequestError("Header key or value cannot be empty.")
 
             if key in headers:
-                raise BadRequestError(
-                    f"Multiple headers with same key: {key}."
-                )
+                raise BadRequestError(f"Multiple headers with same key: {key}.")
             else:
                 headers[key] = value
 
@@ -113,9 +111,7 @@ class Request:
         try:
             parsed_url = urllib.parse.urlparse(self.path)
             self.path = self.path.split("?")[0]
-            return dict(
-                urllib.parse.parse_qsl(parsed_url.query, strict_parsing=True)
-            )
+            return dict(urllib.parse.parse_qsl(parsed_url.query, strict_parsing=True))
         except Exception as e:
             raise BadRequestError(f"Invalid query parameters: {e}.")
 
@@ -171,17 +167,10 @@ class Request:
         try:
             if content_type == "application/json" and self.body:
                 return json.loads(self.body)
-            elif (
-                content_type == "application/x-www-form-urlencoded"
-                and self.body
-            ):
-                return dict(
-                    urllib.parse.parse_qsl(self.body, strict_parsing=True)
-                )
+            elif content_type == "application/x-www-form-urlencoded" and self.body:
+                return dict(urllib.parse.parse_qsl(self.body, strict_parsing=True))
             return self.body
         except json.JSONDecodeError as e:
             raise BadRequestError(f"Invalid JSON in request body: {str(e)}")
         except ValueError as e:
-            raise BadRequestError(
-                f"Invalid form data in request body: {str(e)}"
-            )
+            raise BadRequestError(f"Invalid form data in request body: {str(e)}")

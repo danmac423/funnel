@@ -18,12 +18,13 @@ from funnel.utils import (
 )
 
 
-class MockServer():
+class MockServer:
     def __init__(self, tmp_path):
-        self._mounted_directories = [{"directory": f'{tmp_path}'}]
+        self._mounted_directories = [{"directory": f"{tmp_path}"}]
 
     def get_mounted_directories(self):
         return [dir.get("directory") for dir in self._mounted_directories]
+
 
 def create_mock_request(path: str) -> Request:
     raw_request = f"GET {path} HTTP/1.1\r\nHost: localhost\r\n\r\n"
@@ -44,15 +45,11 @@ def test_load_config_valid(tmp_path):
 
     assert config["host"] == "127.0.0.1"
     assert config["port"] == 8080
-    assert config["mounted_directories"] == [
-        {"path": "/static", "directory": "/etc"}
-    ]
+    assert config["mounted_directories"] == [{"path": "/static", "directory": "/etc"}]
 
 
 def test_load_config_file_not_found(tmp_path):
-    with pytest.raises(
-        FileNotFoundError, match="Configuration file not found:"
-    ):
+    with pytest.raises(FileNotFoundError, match="Configuration file not found:"):
         load_config(tmp_path / "missing.yaml")
 
 
@@ -105,9 +102,7 @@ def test_resolve_requested_path_valid():
     base_path = "/static"
     request_path = "/static/subdir/file.txt"
 
-    resolved_path = resolve_requested_path(
-        request_path, base_path, base_directory
-    )
+    resolved_path = resolve_requested_path(request_path, base_path, base_directory)
     assert resolved_path == os.path.normpath("/base/subdir/file.txt")
 
 
@@ -265,7 +260,6 @@ def test_directory_handler_post_valid_json_no_filename(tmp_path):
 
 
 def test_directory_handler_post_nonexistent_directory(tmp_path):
-
     request = MagicMock()
     request.method = "POST"
     request.path = "/static/nonexistent"
@@ -277,6 +271,7 @@ def test_directory_handler_post_nonexistent_directory(tmp_path):
 
     with pytest.raises(NotFoundError, match="Directory not found."):
         handler(request)
+
 
 def test_directory_handler_not_supported_method(tmp_path):
     request = MagicMock()
@@ -300,7 +295,6 @@ def test_save_json_file_wrong_content_type(tmp_path):
     request.parsed_body = {"key": "value"}
     request.query_params = {}
 
-
     with pytest.raises(BadRequestError, match="Only JSON files are allowed"):
         save_json_file(request, "/static")
 
@@ -313,7 +307,6 @@ def test_save_json_file_not_json(tmp_path):
     request.parsed_body = "json"
     request.query_params = {}
 
-
     with pytest.raises(BadRequestError, match="Invalid JSON data."):
         save_json_file(request, "/static")
 
@@ -325,7 +318,6 @@ def test_save_json_file_filename_not_json(tmp_path):
     request.headers = {"Content-Type": "application/json"}
     request.parsed_body = {"json": 12}
     request.query_params = {"filename": "test.txt"}
-
 
     with pytest.raises(BadRequestError, match="Invalid filename. Must be a valid JSON filename."):
         save_json_file(request, "/static")
@@ -357,7 +349,6 @@ def test_serve_file_with_range_partial(tmp_path):
     assert response.status_code == 206
     assert response.headers["Content-Range"] == "bytes 7-20/27"
     assert response.body == b"this is a test"
-
 
 
 def test_serve_file_with_range_invalid_range(tmp_path):

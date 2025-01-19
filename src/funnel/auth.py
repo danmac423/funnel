@@ -144,23 +144,18 @@ class Auth:
 
                 auth_header = request.headers.get("Authorization")
                 if not auth_header:
-                    raise BadRequestError(
-                        "BadRequestError: Missing or invalid Auth header"
-                    )
+                    raise BadRequestError("BadRequestError: Missing or invalid Auth header")
 
                 if type == "Bearer":
                     if not auth_header.startswith("Bearer "):
                         raise BadRequestError(
-                            "BadRequestError: "
-                            "Missing or invalid Bearer Auth header"
+                            "BadRequestError: Missing or invalid Bearer Auth header"
                         )
 
                     token = auth_header.split(" ")[1]
 
                     if not token:
-                        raise UnauthorizedError(
-                            "Unauthorized: Missing or invalid token"
-                        )
+                        raise UnauthorizedError("Unauthorized: Missing or invalid token")
                     try:
                         self.authenticate_user_bearer(token)
                     except ValueError as e:
@@ -169,8 +164,7 @@ class Auth:
                 elif type == "Basic":
                     if not auth_header.startswith("Basic "):
                         raise BadRequestError(
-                            "BadRequestError: "
-                            "Missing or invalid Basic Auth header"
+                            "BadRequestError: Missing or invalid Basic Auth header"
                         )
 
                     try:

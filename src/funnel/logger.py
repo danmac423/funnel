@@ -15,6 +15,7 @@ class ClientAddressFilter(logging.Filter):
         client_ip (str): Client IP address
         client_port (int): Client port number
     """
+
     def __init__(self, client_ip=None, client_port=None):
         super().__init__()
         self.client_ip = client_ip
@@ -35,13 +36,12 @@ class ClientAddressFilter(logging.Filter):
             record.client_info = ""
         return True
 
+
 formatter = logging.Formatter(
     "%(asctime)s - %(name)s - %(levelname)s - %(client_info)s - %(message)s"
 )
 
-rotating_file_handler = RotatingFileHandler(
-    "logs/server.log", maxBytes=5 * 1024 * 1024
-)
+rotating_file_handler = RotatingFileHandler("logs/server.log", maxBytes=5 * 1024 * 1024)
 
 rotating_file_handler.setFormatter(formatter)
 

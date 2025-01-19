@@ -41,9 +41,7 @@ class HTTPServer:
         self.port = config.get("port", 8080)
 
         self.router = Router()
-        self.executor = ThreadPoolExecutor(
-            max_workers=config.get("max_workers", 10)
-        )
+        self.executor = ThreadPoolExecutor(max_workers=config.get("max_workers", 10))
         self._running = threading.Event()
         self._running.set()
 
@@ -68,9 +66,7 @@ class HTTPServer:
         """
         logger.info(f"Starting server on {self.host}:{self.port}...")
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._server_socket.setsockopt(
-            socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
-        )
+        self._server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._server_socket.bind((self.host, self.port))
         self._server_socket.listen(256)
         self._server_socket.settimeout(1)
@@ -80,9 +76,7 @@ class HTTPServer:
         try:
             while self._running.is_set():
                 try:
-                    client_socket, client_address = (
-                        self._server_socket.accept()
-                    )
+                    client_socket, client_address = self._server_socket.accept()
                     logger.info(f"Accepted connection from {client_address}")
                     self.executor.submit(self._handle_request, client_socket)
                 except socket.timeout:
@@ -152,10 +146,7 @@ class HTTPServer:
             response = handler(request)
 
         except FunnelError as e:
-            logger.error(
-                f"FunnelError: {e.status_code} "
-                f"{e.error_reason} - {e.error_message}"
-            )
+            logger.error(f"FunnelError: {e.status_code} {e.error_reason} - {e.error_message}")
             response = e.to_http_response()
         except Exception as e:
             logger.critical(f"Unexpected error occurred: {e}", exc_info=True)
@@ -171,7 +162,6 @@ class HTTPServer:
             end_time = time.perf_counter()
             processing_time = end_time - start_time
             logger.info(f"Request processed in {processing_time:.6f} seconds.")
-
 
     def _receive_headers(self, client_socket: socket.socket) -> bytes:
         """
@@ -200,8 +190,8 @@ class HTTPServer:
         return raw_headers
 
     def _receive_body(
-    self, client_socket: socket.socket, body_start: bytes, content_length: int
-) -> bytes:
+        self, client_socket: socket.socket, body_start: bytes, content_length: int
+    ) -> bytes:
         """
         Receive the remaining body of the HTTP request.
 
@@ -229,8 +219,6 @@ class HTTPServer:
 
         return body
 
-
-
     def _parse_headers(self, headers_str: str) -> dict:
         """
         Parse raw HTTP headers into a dictionary.
@@ -248,9 +236,7 @@ class HTTPServer:
                 headers[key.strip()] = value.strip()
         return headers
 
-    def route(
-        self, path: str, *, methods: list[str], host: Optional[str] = None
-    ) -> Callable:
+    def route(self, path: str, *, methods: list[str], host: Optional[str] = None) -> Callable:
         """
         Add a route using the Router.
 

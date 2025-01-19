@@ -16,6 +16,31 @@ from funnel.request import Request
 from funnel.response import Response
 from funnel.router import Router
 
+# -----------------------------
+# Configuration and Mounting
+# -----------------------------
+
+
+def load_config(file_path: str) -> dict:
+    """
+    Load server configuration from a YAML file.
+
+    Args:
+        file_path (str): Path to the YAML configuration file.
+
+    Returns:
+        dict: Loaded configuration.
+    """
+    try:
+        with open(file_path, "r") as file:
+            return yaml.safe_load(file)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Configuration file not found: {file_path}")
+    except IsADirectoryError:
+        raise IsADirectoryError(f"{file_path} is a directory")
+    except yaml.YAMLError as e:
+        raise ValueError(f"Error parsing YAML file: {e}")
+
 
 def mount_directories(router: Router, config: dict) -> None:
     """
@@ -98,6 +123,11 @@ def directory_handler_factory(base_directory: str, base_path: str) -> Callable:
     return handler
 
 
+# -----------------------------
+# File Operations
+# -----------------------------
+
+
 def save_json_file(request: Request, directory_path: str) -> Response:
     """
     Save a JSON file to the specified directory.
@@ -112,7 +142,6 @@ def save_json_file(request: Request, directory_path: str) -> Response:
     Raises:
         BadRequestError: If the request is invalid or the directory is not writable.
     """
-
     if request.headers.get("Content-Type") != "application/json":
         raise BadRequestError("Only JSON files are allowed.")
 
@@ -166,6 +195,11 @@ def delete_file(file_path: str) -> Response:
         raise BadRequestError(f"Error deleting file: {e}")
 
 
+# -----------------------------
+# Directory and Path Utilities
+# -----------------------------
+
+
 def resolve_requested_path(request_path: str, base_path: str, base_directory: str) -> str:
     """
     Resolve the full path for the requested resource.
@@ -204,7 +238,7 @@ def serve_directory(directory_path: str, request_path: str) -> Response:
     try:
         entries = sorted(os.listdir(directory_path))
         links = [
-            f"<li><a href='{os.path.join(request_path, entry)}'>{entry}</a></li>"  # noqa
+            f"<li><a href='{os.path.join(request_path, entry)}'>{entry}</a></li>"
             for entry in entries
         ]
         html_content = (
@@ -213,27 +247,6 @@ def serve_directory(directory_path: str, request_path: str) -> Response:
         return Response.html(status_code=200, reason="OK", html_content=html_content)
     except Exception:
         raise NotFoundError(f"Error reading folder: {directory_path}")
-
-
-def load_config(file_path: str) -> dict:
-    """
-    Load server configuration from a YAML file.
-
-    Args:
-        file_path (str): Path to the YAML configuration file.
-
-    Returns:
-        dict: Loaded configuration.
-    """
-    try:
-        with open(file_path, "r") as file:
-            return yaml.safe_load(file)
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Configuration file not found: {file_path}")
-    except IsADirectoryError:
-        raise IsADirectoryError(f"{file_path} is a directory")
-    except yaml.YAMLError as e:
-        raise ValueError(f"Error parsing YAML file: {e}")
 
 
 def serve_file(file_path: str, request: Request) -> Response:
@@ -269,6 +282,11 @@ def serve_file(file_path: str, request: Request) -> Response:
         raise NotFoundError(f"File not found: {file_path}")
     except Exception as e:
         raise BadRequestError(f"Error reading file: {e}")
+
+
+# -----------------------------
+# Range Utilities
+# -----------------------------
 
 
 def parse_range_header(range_header: str, file_size: int) -> tuple[int, int]:

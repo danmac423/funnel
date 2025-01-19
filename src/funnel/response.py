@@ -52,15 +52,11 @@ class Response:
         Returns:
             bytes: HTTP response
         """
-        self.set_header(
-            "Content-Length", str(len(self.body) if self.body else 0)
-        )
+        self.set_header("Content-Length", str(len(self.body) if self.body else 0))
 
         headers = (
             f"HTTP/1.1 {self.status_code} {self.reason}\r\n"
-            + "\r\n".join(
-                f"{key}: {value}" for key, value in self.headers.items()
-            )
+            + "\r\n".join(f"{key}: {value}" for key, value in self.headers.items())
             + "\r\n\r\n"
         ).encode("utf-8")
 

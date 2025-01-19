@@ -40,9 +40,7 @@ class Router:
 
     def __init__(self):
         self.static_routes: dict[RouteKey, dict[str, Callable]] = {}
-        self.dynamic_routes: list[
-            tuple[RouteKey, re.Pattern, dict[str, Callable]]
-        ] = []
+        self.dynamic_routes: list[tuple[RouteKey, re.Pattern, dict[str, Callable]]] = []
 
     def _add_route(
         self,
@@ -66,22 +64,16 @@ class Router:
         if "<" in path and ">" in path:
             regex_path = re.sub(r"<\w+:[^>]+>", r".*", normalized_path)
             regex = re.compile(f"^{regex_path}$")
-            self.dynamic_routes.append(
-                (route_key, regex, {method: handler for method in methods})
-            )
+            self.dynamic_routes.append((route_key, regex, {method: handler for method in methods}))
         else:
             if route_key not in self.static_routes:
                 self.static_routes[route_key] = {}
             for method in methods:
                 if method in self.static_routes[route_key]:
-                    raise ValueError(
-                        f"Route already exists for {method} {normalized_path}"
-                    )
+                    raise ValueError(f"Route already exists for {method} {normalized_path}")
                 self.static_routes[route_key][method] = handler
 
-    def get_handler(
-        self, path: str, method: str, host: Optional[str] = None
-    ) -> Callable:
+    def get_handler(self, path: str, method: str, host: Optional[str] = None) -> Callable:
         """
         Get the handler for a path and method.
 
@@ -99,9 +91,7 @@ class Router:
         if route_key in self.static_routes:
             if method in self.static_routes[route_key]:
                 return self.static_routes[route_key][method]
-            raise MethodNotAllowedError(
-                f"Method {method} not allowed for path: {path}"
-            )
+            raise MethodNotAllowedError(f"Method {method} not allowed for path: {path}")
 
         route_key = RouteKey(host=None, path=normalized_path)
         if route_key in self.static_routes:
@@ -122,9 +112,7 @@ class Router:
 
         raise NotFoundError(f"No route found for path: {path}")
 
-    def route(
-        self, path: str, *, methods: list[str], host: Optional[str] = None
-    ) -> Callable:
+    def route(self, path: str, *, methods: list[str], host: Optional[str] = None) -> Callable:
         """
         Decorator to add a route.
 
