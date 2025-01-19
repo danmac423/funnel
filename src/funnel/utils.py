@@ -171,49 +171,111 @@ def serve_file(file_path: str, request: Request) -> Response:
     try:
         file_size = os.path.getsize(file_path)
         filename = os.path.basename(file_path)
+        range_header = request.headers.get("Range")
+        if range_header:
+            start, end = parse_range_header(range_header, file_size)
+
+            content = read_file_range(file_path, start, end)
+            headers = generate_range_headers(start, end, file_size, filename, content)
+
+            return Response(
+                status_code=206,
+                reason="Partial Content",
+                headers=headers,
+                body=content
+            )
+
         with open(file_path, "rb") as file:
-            range_header = request.headers.get("Range")
-            if range_header:
-                # Parse Range header
-                range_match = re.match(r"bytes=(\d*)-(\d*)", range_header)
-                if not range_match:
-                    raise BadRequestError("Invalid Range header format.")
-                start, end = range_match.groups()
-                start = int(start) if start else 0
-                end = int(end) if end else file_size - 1
-
-                # Validate range
-                if start >= file_size or start > end:
-                    raise BadRequestError("Invalid byte range.")
-                end = min(end, file_size - 1)
-
-                # Read the requested range
-                file.seek(start)
-                content = file.read(end - start + 1)
-
-                headers = {
-                    "Content-Range": f"bytes {start}-{end}/{file_size}",
-                    "Accept-Ranges": "bytes",
-                    "Content-Disposition": f'attachment; filename="{filename}"',
-                    "Content-Length": str(len(content)),
-                    "Content-Type": guess_type(file_path)[0] or "application/octet-stream",
-                }
-                return Response(
-                    status_code=206,
-                    reason="Partial Content",
-                    headers=headers,
-                    body=content
-                )
-
-            # No Range header, return full file
             content = file.read()
-            headers = {
-                "Content-Type": guess_type(file_path)[0] or "application/octet-stream",
-                "Content-Disposition": f'attachment; filename="{filename}"',
-                "Content-Length": str(len(content)),
-            }
-            return Response(status_code=200, reason="OK", headers=headers, body=content)
+        headers = generate_full_file_headers(filename, content)
+        return Response(status_code=200, reason="OK", headers=headers, body=content)
     except FileNotFoundError:
         raise NotFoundError(f"File not found: {file_path}")
     except Exception as e:
         raise BadRequestError(f"Error reading file: {e}")
+
+
+def parse_range_header(range_header: str, file_size: int) -> tuple[int, int]:
+    """
+    Parse and validate the Range header.
+
+    Args:
+        range_header (str): The Range header from the request.
+        file_size (int): The total size of the file.
+
+    Returns:
+        tuple[int, int]: Start and end byte positions.
+
+    Raises:
+        BadRequestError: If the Range header is invalid or out of bounds.
+    """
+    range_match = re.match(r"bytes=(\d*)-(\d*)", range_header)
+    if not range_match:
+        raise BadRequestError("Invalid Range header format.")
+    start, end = range_match.groups()
+    start = int(start) if start else 0
+    end = int(end) if end else file_size - 1
+
+    if start >= file_size or start > end:
+        raise BadRequestError("Invalid byte range.")
+    return start, min(end, file_size - 1)
+
+
+def read_file_range(file_path: str, start: int, end: int) -> bytes:
+    """
+    Read a specific byte range from a file.
+
+    Args:
+        file_path (str): Path to the file.
+        start (int): Start byte position.
+        end (int): End byte position.
+
+    Returns:
+        bytes: The content of the specified range.
+    """
+    with open(file_path, "rb") as file:
+        file.seek(start)
+        return file.read(end - start + 1)
+
+
+def generate_range_headers(
+    start: int, end: int, file_size: int, filename: str, content: bytes
+) -> dict:
+    """
+    Generate HTTP headers for a ranged response.
+
+    Args:
+        start (int): Start byte position.
+        end (int): End byte position.
+        file_size (int): Total size of the file.
+        filename (str): Name of the file.
+        content (bytes): Content of the range.
+
+    Returns:
+        dict: HTTP headers.
+    """
+    return {
+        "Content-Range": f"bytes {start}-{end}/{file_size}",
+        "Accept-Ranges": "bytes",
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Content-Length": str(len(content)),
+        "Content-Type": guess_type(filename)[0] or "application/octet-stream",
+    }
+
+
+def generate_full_file_headers(filename: str, content: bytes) -> dict:
+    """
+    Generate HTTP headers for a full file response.
+
+    Args:
+        filename (str): Name of the file.
+        content (bytes): Content of the file.
+
+    Returns:
+        dict: HTTP headers.
+    """
+    return {
+        "Content-Type": guess_type(filename)[0] or "application/octet-stream",
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Content-Length": str(len(content)),
+    }
