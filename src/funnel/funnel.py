@@ -2,6 +2,7 @@ import logging
 import signal
 import socket
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from logging.handlers import RotatingFileHandler
 from typing import Callable, Optional
@@ -123,6 +124,7 @@ class HTTPServer:
             client_socket (socket.socket): The client's socket connection.
         """
         try:
+            start_time = time.perf_counter()
             client_socket.settimeout(5)
             raw_request = self._receive_headers(client_socket)
 
@@ -164,6 +166,10 @@ class HTTPServer:
             logger.info(f"Sending response: Status={response.status_code}")
             client_socket.sendall(response.to_http())
             client_socket.close()
+            end_time = time.perf_counter()
+            processing_time = end_time - start_time
+            logger.info(f"Request processed in {processing_time:.6f} seconds.")
+
 
     def _receive_headers(self, client_socket: socket.socket) -> bytes:
         """
