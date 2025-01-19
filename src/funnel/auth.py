@@ -1,3 +1,5 @@
+"""Module to handle authentication and authorization."""
+
 import base64
 import datetime
 import os
@@ -15,6 +17,8 @@ load_dotenv()
 
 
 class Auth:
+    """Class to handle authentication and authorization."""
+
     SECRET_KEY = os.getenv("SECRET_KEY")
 
     def __init__(self):
