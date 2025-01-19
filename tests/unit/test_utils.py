@@ -422,7 +422,7 @@ def test_delete_file_success(tmp_path):
     response = delete_file(str(file_path))
 
     assert response.status_code == 200
-    assert "deleted successfully" in response.body
+    assert "deleted successfully" in response.body  # type: ignore
     assert not file_path.exists()
 
 
