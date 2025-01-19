@@ -622,6 +622,27 @@ Napisane testy jednostkowe zapewniły porycie linii kodu na poziomie 100%.
 
 ## **Postać plików konfiguracyjnych oraz logów**
 
+Plik konfiguracyjny umożliwia zdefiniowanie adresu i portu hosta, ograniczenie liczby uruchamianych wątków (liczby obsługiwanych jednocześnie klientów) oraz katalogów do zamontowanie na serwerze.
+
+Przykładowy plik konfiguracyjny
+
+```yaml
+host: "127.0.0.1"
+port: 8080
+max_workers: 10
+mounted_directories:
+  - path: "/static"
+    directory: "."
+  - path: "/project"
+    directory: "/"
+```
+
+Logi mają postać:
+
+```
+time - logger_name - levelname - client_addres:port - message
+```
+
 ---
 
 ## **Podsumowanie**
