@@ -617,8 +617,83 @@ Napisane testy jednostkowe zapewniły porycie linii kodu na poziomie 100%.
 
 ## **Opis najważniejszych rozwiązań funkcjonalnych**
 
+### **Struktury danych**
 
+#### **Klasa `Request`**
+Reprezentuje żądanie HTTP. Jest odpowiedzialna za parsowanie surowych danych z gniazda klienta.
+
+**Atrybyty:** 
+- `method`, `path`, `protocol`: Kluczowe informacje z linii żądania
+- `headers`: Nagłówki HTTP w formie słownika
+- `query_params`: Parametry zapytania wyciągnięte z URL.
+- `body` i `parsed_body`: Ciało żądania w formie surowej oraz sparsowanej (JSON lub dane formularza).
+
+**Kluczowe metody:**
+- `_parse_request_line`: Rozdziela linię żądania na metodę, ścieżkę i protokół.
+- `_parse_headers`: Zamienia nagłówki HTTP na słownik i weryfikuje ich poprawność.
+- `_parse_body`: Odczytuje ciało żądania na podstawie nagłówka Content-Length.
+- `_parse_body_content`: Sparsowane ciało żądania jest konwertowane na JSON lub dane formularza, zależnie od nagłówka `Content-Type`.
+
+#### **Klasa `Response`**
+
+Generuje odpowiedzi HTTP
+
+**Atrybuty:**
+- `status_code`, `reason`: Kod statusu i powód odpowiedzi (np. `200 OK`).
+- `headers`: Nagłówki odpowiedzi (np. `Content-Type`).
+- `body`: Treść odpowiedzi (może być tekstowa lub binarna).
+
+**Kluczowe metody:**
+- `to_http`: Generuje odpowiedź w formacie bajtowym, gotową do wysłania klientowi.
+
+- `json` i `html`: Metody klasowe tworzące odpowiedzi JSON lub HTML.
 ---
+
+### **Komponenty**
+
+#### **Klasa `Router`**
+
+Zarządza wszystkimi zarejestrowanymi ścieżkami i przypisanymi do nich handlerami.
+
+**Atrybuty:**
+- `static_routes`: Słownik dla statycznych ścieżek o strukturze:
+  ```python
+  {
+    RouteKey(host, path): {
+        "GET": handler_get,
+        "POST": handler_post,
+        ...
+    }
+  }
+  ```
+- `dynamic_routes`: Lista obsługująca ścieżki dynamiczne z parametrami (np. `/user/<id>`), zawierająca krotki:
+  ```python
+  [(RouteKey, regex, methods)]
+  ```
+
+**Kluczowe metody:**
+- `_add_route`: Dodaje nową ścieżkę do statycznych lub dynamicznych tras.
+- `get_handler`: Wyszukuje odpowiedni handler dla danej ścieżki i metody HTTP. Obsługuje zarówno statyczne, jak i dynamiczne trasy.
+- `route`: Dekorator ułatwiający rejestrowanie tras w kodzie aplikacji.
+
+#### **Klasa `HTTPServer`**
+Odpowiada za główną logikę serwera HTTP. Jest to punkt wejścia całej aplikacji, który obsługuje przychodzące żądania HTTP, deleguje je do odpowiednich handlerów za pomocą routera i zarządza konfiguracją serwera.
+
+**Atrybuty:**
+- `host` i `port`: Adres i port, na którym działa serwer, pobrane z pliku konfiguracyjnego.
+- `router`: Obiekt klasy `Router` odpowiedzialny za rejestrowanie i rozpoznawanie ścieżek oraz przypisywanie ich do odpowiednich handlerów.
+- `executor`: Obiekt klasy `ThreadPoolExecutor`, który umożliwia obsługę wielu żądań jednocześnie w osobnych wątkach.
+- `_server_socket`: Główne gniazdo serwera do nasłuchiwania przychodzących połączeń.
+
+**Kluczowe metody:**
+
+- `start`: Inicjalizuje gniazdo serwera, ustawia je w trybie nasłuchiwania, a następnie uruchamia pętlę obsługi żądań.
+- `_handle_request`: W osobnym wątku obsługuje jedno przychodzące żądanie:
+  - Parsuje surowe dane HTTP za pomocą klasy Request.
+  - Wybiera odpowiedni handler za pomocą Router.get_handler.
+  - Generuje odpowiedź za pomocą klasy Response.
+- `_receive_headers` i `_receive_body`: Obsługują odczyt danych z gniazda klienta, dzieląc je na nagłówki i ciało.
+- `stop`: Zatrzymuje serwer w sposób bezpieczny, zamykając wszystkie otwarte zasoby.
 
 ## **Postać plików konfiguracyjnych oraz logów**
 
