@@ -1,7 +1,6 @@
 from funnel.auth import Auth
-from funnel.endpoint_utils import remove_file, save_json
+from funnel.endpoint_utils import remove_file
 from funnel.funnel import HTTPServer
-from funnel.request import Request
 from funnel.response import Response
 from funnel.user_source import JsonUserSource
 
@@ -71,19 +70,6 @@ def handle_data(request):
         206,
         "Created",
         {"message": "Data received", "data": request.parsed_body},
-    )
-
-@server.route("/save_json", methods=["POST"])
-def post_data(request: Request):
-    save_json(server, request)
-    return Response.json(
-        206,
-        "Created",
-        {
-            "message": "Data received",
-            "path": request.query_params.get("path"),
-            "data": request.parsed_body
-        },
     )
 
 @server.route("/data", methods=["DELETE"])

@@ -314,33 +314,6 @@ def test_authorization_basic():
         process.terminate()
 
 
-def test_post_json_file():
-    process = multiprocessing.Process(target=run_server)
-    process.start()
-
-    try:
-        for _ in range(10):
-            try:
-                payload = {"key": "value", "data": {"nested": True}}
-                response = requests.post(
-                    "http://127.0.0.1:8080/data",
-                    json=payload,
-                )
-                break
-            except requests.ConnectionError:
-                time.sleep(0.5)
-        else:
-            raise RuntimeError("Server did not start in time.")
-
-        assert response.status_code == 201
-        assert response.headers["Content-Type"] == "application/json"
-        response_json = response.json()
-        assert response_json["message"] == "Data received"
-        assert response_json["data"] == payload
-    finally:
-        process.terminate()
-
-
 def test_range_header_support():
     process = multiprocessing.Process(target=run_server)
     process.start()

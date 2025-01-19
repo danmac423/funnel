@@ -1,4 +1,3 @@
-import json
 import os
 
 from funnel.exceptions import BadRequestError, NotFoundError
@@ -29,35 +28,3 @@ def remove_file(server: HTTPServer, request: Request):
             removed = True
     if not removed:
         raise NotFoundError("File not found.")
-
-
-def save_json(server: HTTPServer, request: Request) -> None:
-    mounted_directories = server.get_mounted_directories()
-
-    target_path_str = request.query_params.get("path")
-    if not target_path_str:
-        raise BadRequestError("Missing 'path' query parameter.")
-
-    target_path = os.path.abspath(target_path_str)
-
-
-    if not any(
-        os.path.commonpath([target_path, os.path.abspath(d)]) == os.path.abspath(d)
-        for d in mounted_directories
-    ):
-        raise BadRequestError("Target path is not within a mounted directory.")
-
-    file_data = request.body
-    if file_data is None:
-        raise BadRequestError("Request body is empty.")
-
-    try:
-        json_data = json.loads(file_data)
-    except json.JSONDecodeError as e:
-        raise BadRequestError(f"Invalid JSON format: {e}")
-
-    try:
-        with open(target_path, "w", encoding="utf-8") as file:
-            json.dump(json_data, file, indent=4)
-    except Exception as e:
-        raise BadRequestError(f"Failed to save file: {e}")
