@@ -33,13 +33,13 @@ def mount_directories(router: Router, config: dict) -> None:
 
         router._add_route(
             path=f"{base_path}/<path:subpath>",
-            methods=["GET", "POST"],
+            methods=["GET", "POST", "DELETE"],
             handler=handler,
         )
 
         router._add_route(
             path=base_path,
-            methods=["GET", "POST"],
+            methods=["GET", "POST", "DELETE"],
             handler=handler,
         )
 
@@ -87,6 +87,12 @@ def directory_handler_factory(base_directory: str, base_path: str) -> Callable:
 
             raise NotFoundError("Directory not found.")
 
+        elif request.method == "DELETE":
+            if os.path.isfile(requested_path):
+                return delete_file(requested_path)
+
+            raise NotFoundError("File not found.")
+
         raise MethodNotAllowedError(f"Method {request.method} not supported.")
 
     return handler
@@ -131,6 +137,33 @@ def save_json_file(request: Request, directory_path: str) -> Response:
         reason="Created",
         json_data={"message": "File uploaded successfully", "path": file_path},
     )
+
+
+def delete_file(file_path: str) -> Response:
+    """
+    Delete a file at the specified path.
+
+    Args:
+        file_path (str): The full path to the file to be deleted.
+
+    Returns:
+        Response: A JSON response indicating success.
+
+    Raises:
+        NotFoundError: If the file does not exist.
+        BadRequestError: If there is an error during file deletion.
+    """
+    try:
+        os.remove(file_path)
+        return Response.json(
+            status_code=200,
+            reason="OK",
+            json_data={"message": f"File '{file_path}' deleted successfully."},
+        )
+    except FileNotFoundError:
+        raise NotFoundError(f"File not found: {file_path}")
+    except Exception as e:
+        raise BadRequestError(f"Error deleting file: {e}")
 
 
 def resolve_requested_path(request_path: str, base_path: str, base_directory: str) -> str:

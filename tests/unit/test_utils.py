@@ -7,6 +7,7 @@ from funnel.exceptions import BadRequestError, MethodNotAllowedError, NotFoundEr
 from funnel.request import Request
 from funnel.router import Router
 from funnel.utils import (
+    delete_file,
     directory_handler_factory,
     load_config,
     mount_directories,
@@ -132,12 +133,10 @@ def test_serve_directory(tmp_path):
 
 
 def test_serve_directory_exception(tmp_path):
-    # Mock os.listdir to raise an exception
     with patch("os.listdir", side_effect=OSError("Test error")):
         with pytest.raises(NotFoundError) as excinfo:
             serve_directory(str(tmp_path), "/static")
 
-        # Assert the exception message
         assert "Error reading folder" in str(excinfo.value)
         assert str(tmp_path) in str(excinfo.value)
 
@@ -183,8 +182,6 @@ def test_serve_file_read_error(tmp_path, mocker):
     file.write_text("content")
 
     request = create_mock_request(str(file))
-
-    # mocker.patch("builtins.open", side_effect=OSError("Read error"))
 
     with patch("builtins.open", side_effect=OSError("Read error")):
         with pytest.raises(BadRequestError, match="Error reading file:"):
@@ -393,3 +390,62 @@ def test_serve_file_with_range_no_file():
 
     with pytest.raises(NotFoundError, match=f"File not found: {non_existent_file_path}"):
         serve_file(non_existent_file_path, request)
+
+
+def test_directory_handler_delete_existing_file(tmp_path):
+    subdir = tmp_path / "subdir"
+    subdir.mkdir()
+    file_to_delete = subdir / "file.json"
+    file_to_delete.write_text("{}")
+
+    request = MagicMock()
+    request.method = "DELETE"
+    request.path = "/static/file.json"
+
+    handler = directory_handler_factory(str(subdir), "/static")
+    response = handler(request)
+
+    assert response.status_code == 200
+    assert "deleted successfully" in response.body
+    assert not file_to_delete.exists()
+
+
+def test_directory_handler_delete_nonexistent_file(tmp_path):
+    subdir = tmp_path / "subdir"
+    subdir.mkdir()
+
+    request = MagicMock()
+    request.method = "DELETE"
+    request.path = "/static/nonexistent.json"
+
+    handler = directory_handler_factory(str(subdir), "/static")
+
+    with pytest.raises(NotFoundError):
+        handler(request)
+
+
+def test_delete_file_success(tmp_path):
+    file_path = tmp_path / "test_delete.json"
+    file_path.write_text("{}")
+
+    response = delete_file(str(file_path))
+
+    assert response.status_code == 200
+    assert "deleted successfully" in response.body
+    assert not file_path.exists()
+
+
+def test_delete_file_not_found(tmp_path):
+    file_path = tmp_path / "nonexistent.json"
+
+    with pytest.raises(NotFoundError, match=f"File not found: {file_path}"):
+        delete_file(str(file_path))
+
+
+def test_delete_file_permission_error_mock(tmp_path):
+    file_path = tmp_path / "test_delete.json"
+    file_path.write_text("Test content")
+
+    with patch("os.remove", side_effect=OSError("Permission denied")):
+        with pytest.raises(BadRequestError, match="Error deleting file:"):
+            delete_file(str(file_path))
