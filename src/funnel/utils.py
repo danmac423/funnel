@@ -1,14 +1,17 @@
 """
 Utility functions for Funnel.
 """
+
+import json
 import os
 import re
+import time
 from mimetypes import guess_type
 from typing import Callable
 
 import yaml
 
-from funnel.exceptions import BadRequestError, NotFoundError
+from funnel.exceptions import BadRequestError, MethodNotAllowedError, NotFoundError
 from funnel.request import Request
 from funnel.response import Response
 from funnel.router import Router
@@ -30,13 +33,13 @@ def mount_directories(router: Router, config: dict) -> None:
 
         router._add_route(
             path=f"{base_path}/<path:subpath>",
-            methods=["GET"],
+            methods=["GET", "POST"],
             handler=handler,
         )
 
         router._add_route(
             path=base_path,
-            methods=["GET"],
+            methods=["GET", "POST"],
             handler=handler,
         )
 
@@ -57,9 +60,9 @@ def directory_handler_factory(base_directory: str, base_path: str) -> Callable:
 
     base_directory = os.path.abspath(base_directory)
 
-    def handler(request):
+    def handler(request: Request):
         """
-        Dynamically serve files or directories.
+        Dynamically serve files or directories and handle JSON uploads.
 
         Args:
             request (Request): Incoming HTTP request.
@@ -67,24 +70,70 @@ def directory_handler_factory(base_directory: str, base_path: str) -> Callable:
         Returns:
             Response: HTTP response with file or directory content.
         """
-        requested_path = resolve_requested_path(
-            request.path, base_path, base_directory
-        )
+        requested_path = resolve_requested_path(request.path, base_path, base_directory)
 
-        if os.path.isdir(requested_path):
-            return serve_directory(requested_path, request.path)
+        if request.method == "GET":
+            if os.path.isdir(requested_path):
+                return serve_directory(requested_path, request.path)
 
-        if os.path.isfile(requested_path):
-            return serve_file(requested_path, request)
+            if os.path.isfile(requested_path):
+                return serve_file(requested_path, request)
 
-        raise NotFoundError("File or directory not found.")
+            raise NotFoundError("File or directory not found.")
+
+        elif request.method == "POST":
+            if os.path.isdir(requested_path):
+                return save_json_file(request, requested_path)
+
+            raise NotFoundError("Directory not found.")
+
+        raise MethodNotAllowedError(f"Method {request.method} not supported.")
 
     return handler
 
 
-def resolve_requested_path(
-    request_path: str, base_path: str, base_directory: str
-) -> str:
+def save_json_file(request: Request, directory_path: str) -> Response:
+    """
+    Save a JSON file to the specified directory.
+
+    Args:
+        request (Request): The HTTP request containing the JSON data.
+        directory_path (str): The directory where the file should be saved.
+
+    Returns:
+        Response: A JSON response indicating success.
+
+    Raises:
+        BadRequestError: If the request is invalid or the directory is not writable.
+    """
+
+    if request.headers.get("Content-Type") != "application/json":
+        raise BadRequestError("Only JSON files are allowed.")
+
+    json_data = request.parsed_body
+    if not isinstance(json_data, dict):
+        raise BadRequestError("Invalid JSON data.")
+
+    filename = request.query_params.get("filename")
+    if not filename:
+        filename = f"upload_{int(time.time())}.json"
+
+    if not re.match(r"^[a-zA-Z0-9_\-\.]+\.json$", filename):
+        raise BadRequestError("Invalid filename. Must be a valid JSON filename.")
+
+    file_path = os.path.join(directory_path, filename)
+
+    with open(file_path, "w", encoding="utf-8") as file:
+        json.dump(json_data, file, ensure_ascii=False, indent=4)
+
+    return Response.json(
+        status_code=201,
+        reason="Created",
+        json_data={"message": "File uploaded successfully", "path": file_path},
+    )
+
+
+def resolve_requested_path(request_path: str, base_path: str, base_directory: str) -> str:
     """
     Resolve the full path for the requested resource.
 
@@ -126,12 +175,9 @@ def serve_directory(directory_path: str, request_path: str) -> Response:
             for entry in entries
         ]
         html_content = (
-            f"<html><body><h1>Index of {request_path}</h1>"
-            f"<ul>{''.join(links)}</ul></body></html>"
+            f"<html><body><h1>Index of {request_path}</h1><ul>{''.join(links)}</ul></body></html>"
         )
-        return Response.html(
-            status_code=200, reason="OK", html_content=html_content
-        )
+        return Response.html(status_code=200, reason="OK", html_content=html_content)
     except Exception:
         raise NotFoundError(f"Error reading folder: {directory_path}")
 
@@ -179,10 +225,7 @@ def serve_file(file_path: str, request: Request) -> Response:
             headers = generate_range_headers(start, end, file_size, filename, content)
 
             return Response(
-                status_code=206,
-                reason="Partial Content",
-                headers=headers,
-                body=content
+                status_code=206, reason="Partial Content", headers=headers, body=content
             )
 
         with open(file_path, "rb") as file:

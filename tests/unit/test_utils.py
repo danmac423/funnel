@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from funnel.exceptions import BadRequestError, NotFoundError
+from funnel.exceptions import BadRequestError, MethodNotAllowedError, NotFoundError
 from funnel.request import Request
 from funnel.router import Router
 from funnel.utils import (
@@ -11,6 +11,7 @@ from funnel.utils import (
     load_config,
     mount_directories,
     resolve_requested_path,
+    save_json_file,
     serve_directory,
     serve_file,
 )
@@ -225,6 +226,112 @@ def test_directory_handler_factory_nonexistent_path(tmp_path):
     nonexistent_path = tmp_path / "nonexistent"
     with pytest.raises(ValueError):
         directory_handler_factory(str(nonexistent_path), "/static")
+
+
+def test_directory_handler_post_valid_json(tmp_path):
+    subdir = tmp_path / "subdir"
+    subdir.mkdir()
+
+    request = MagicMock()
+    request.method = "POST"
+    request.path = "/static"
+    request.headers = {"Content-Type": "application/json"}
+    request.parsed_body = {"key": "value"}
+    request.query_params = {"filename": "test.json"}
+
+    handler = directory_handler_factory(str(subdir), "/static")
+    response = handler(request)
+
+    assert response.status_code == 201
+    assert "File uploaded successfully" in response.body
+    assert subdir.joinpath("test.json").exists()
+
+
+def test_directory_handler_post_valid_json_no_filename(tmp_path):
+    subdir = tmp_path / "subdir"
+    subdir.mkdir()
+
+    request = MagicMock()
+    request.method = "POST"
+    request.path = "/static"
+    request.headers = {"Content-Type": "application/json"}
+    request.parsed_body = {"key": "value"}
+    request.query_params = {}
+
+    handler = directory_handler_factory(str(subdir), "/static")
+    with patch("time.time", return_value=123):
+        response = handler(request)
+
+    assert response.status_code == 201
+    assert "File uploaded successfully" in response.body
+    assert subdir.joinpath("upload_123.json").exists()
+
+
+def test_directory_handler_post_nonexistent_directory(tmp_path):
+
+    request = MagicMock()
+    request.method = "POST"
+    request.path = "/static/nonexistent"
+    request.headers = {"Content-Type": "application/json"}
+    request.parsed_body = {"key": "value"}
+    request.query_params = {}
+
+    handler = directory_handler_factory(str(tmp_path), "/static")
+
+    with pytest.raises(NotFoundError, match="Directory not found."):
+        handler(request)
+
+def test_directory_handler_not_supported_method(tmp_path):
+    request = MagicMock()
+    request.method = "UNSUPPORTED"
+    request.path = "/static"
+    request.headers = {"Content-Type": "application/json"}
+    request.parsed_body = {"key": "value"}
+    request.query_params = {}
+
+    handler = directory_handler_factory(str(tmp_path), "/static")
+
+    with pytest.raises(MethodNotAllowedError, match="Method UNSUPPORTED not supported."):
+        handler(request)
+
+
+def test_save_json_file_wrong_content_type(tmp_path):
+    request = MagicMock()
+    request.method = "POST"
+    request.path = "/static"
+    request.headers = {"Content-Type": "application/not_json"}
+    request.parsed_body = {"key": "value"}
+    request.query_params = {}
+
+
+    with pytest.raises(BadRequestError, match="Only JSON files are allowed"):
+        save_json_file(request, "/static")
+
+
+def test_save_json_file_not_json(tmp_path):
+    request = MagicMock()
+    request.method = "POST"
+    request.path = "/static"
+    request.headers = {"Content-Type": "application/json"}
+    request.parsed_body = "json"
+    request.query_params = {}
+
+
+    with pytest.raises(BadRequestError, match="Invalid JSON data."):
+        save_json_file(request, "/static")
+
+
+def test_save_json_file_filename_not_json(tmp_path):
+    request = MagicMock()
+    request.method = "POST"
+    request.path = "/static"
+    request.headers = {"Content-Type": "application/json"}
+    request.parsed_body = {"json": 12}
+    request.query_params = {"filename": "test.txt"}
+
+
+    with pytest.raises(BadRequestError, match="Invalid filename. Must be a valid JSON filename."):
+        save_json_file(request, "/static")
 
 
 def test_serve_file_with_range_full_file(tmp_path):
