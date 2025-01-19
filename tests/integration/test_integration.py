@@ -1,7 +1,9 @@
 import base64
 import multiprocessing
 import os
+import threading
 import time
+from unittest.mock import patch
 
 import requests
 
@@ -326,3 +328,100 @@ def test_range_header_support():
         process.terminate()
         if os.path.exists(file_path):
             os.remove(file_path)
+
+
+def test_delete():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    file_path = os.path.join("tests/integration/", "test_file.txt")
+    with open(file_path, "w") as f:
+        f.write("This is a test file for not found deletion.")
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.delete(
+                    "http://127.0.0.1:8080/project/tests/integration/test_file.txt",
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 200
+        assert (
+            f"File '{os.getcwd() + os.path.sep + file_path}' deleted successfully."
+            in response.json()["message"]
+        )
+
+    finally:
+        process.terminate()
+
+
+def test_add_file():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    file_path = os.path.join("tests/integration/", "test_file.json")
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.post(
+                    "http://127.0.0.1:8080/project/tests/integration/?filename=test_file.json",
+                    headers={"Content-Type": "application/json"},
+                    json={"newfile": "name", "more": "info"},
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 201
+        assert os.path.isfile(os.getcwd() + os.path.sep + file_path) is True
+        assert "File uploaded successfully" in response.json()["message"]
+        os.remove(file_path)
+
+    finally:
+        process.terminate()
+
+
+def test_add_file_default_name():
+    with patch("time.time", return_value=1234567890):
+        server = HTTPServer(TEST_PATH + "test_config.yaml")
+        server_thread = threading.Thread(target=server.start, daemon=True)
+        server_thread.start()
+
+        try:
+            for _ in range(10):
+                try:
+                    response = requests.get(
+                        "http://127.0.0.1:8080/project/tests/integration/test_config.yaml"
+                    )
+                    break
+                except requests.ConnectionError:
+                    time.sleep(0.5)
+            else:
+                raise RuntimeError("Server did not start in time.")
+
+            response = requests.post(
+                "http://127.0.0.1:8080/project/tests/integration/",
+                headers={"Content-Type": "application/json"},
+                json={"newfile": "name", "more": "info"},
+            )
+
+            expected_file_name = "upload_1234567890.json"
+            expected_file_path = os.path.join("tests/integration/", expected_file_name)
+
+            assert response.status_code == 201
+            assert response.json()["message"] == "File uploaded successfully"
+            assert expected_file_name in response.json()["path"]
+            assert os.path.isfile(expected_file_path) is True
+            os.remove(expected_file_path)
+
+        finally:
+            server.stop()
+            server_thread.join()
