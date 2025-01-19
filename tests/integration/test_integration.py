@@ -39,9 +39,7 @@ def configure_server() -> HTTPServer:
 
         user = auth.user_source.get_user(username)
         if not user or password != user["password"]:
-            return Response.json(
-                401, "Unauthorized", {"error": "Invalid credentials"}
-            )
+            return Response.json(401, "Unauthorized", {"error": "Invalid credentials"})
 
         payload = {"username": username}
         token = auth.generate_token(payload)
@@ -54,9 +52,7 @@ def configure_server() -> HTTPServer:
 
     @server.route("/", methods=["GET"], host="example.com")
     def home_example(request):
-        return Response.html(
-            200, "OK", "<h1>Welcome to the Home Page of example.com host!</h1>"
-        )
+        return Response.html(200, "OK", "<h1>Welcome to the Home Page of example.com host!</h1>")
 
     @server.route("/about", methods=["GET"])
     def about(request):
@@ -139,10 +135,7 @@ def test_get_file():
         else:
             raise RuntimeError("Server did not start in time.")
         assert response.status_code == 200
-        assert (
-            response.headers["Content-Disposition"]
-            == 'attachment; filename="test_config.yaml"'
-        )
+        assert response.headers["Content-Disposition"] == 'attachment; filename="test_config.yaml"'
         assert expected_body in response.text
     finally:
         process.terminate()
@@ -167,10 +160,7 @@ def test_get_directory():
         assert response.headers["Content-Type"] == "text/html"
         assert "<h1>Index of /project/tests</h1>" in response.text
         for entry in expected_entries:
-            assert (
-                f"<li><a href='/project/tests/{entry}'>{entry}</a></li>"
-                in response.text
-            )
+            assert f"<li><a href='/project/tests/{entry}'>{entry}</a></li>" in response.text
 
     finally:
         process.terminate()
@@ -183,9 +173,7 @@ def test_home_example():
     try:
         for _ in range(10):
             try:
-                response = requests.get(
-                    "http://127.0.0.1:8080/", headers={"Host": "example.com"}
-                )
+                response = requests.get("http://127.0.0.1:8080/", headers={"Host": "example.com"})
                 break
             except requests.ConnectionError:
                 time.sleep(0.5)
@@ -194,10 +182,7 @@ def test_home_example():
 
         assert response.status_code == 200
         assert response.headers["Content-Type"] == "text/html"
-        assert (
-            "<h1>Welcome to the Home Page of example.com host!</h1>"
-            in response.text
-        )
+        assert "<h1>Welcome to the Home Page of example.com host!</h1>" in response.text
     finally:
         process.terminate()
 
@@ -295,9 +280,7 @@ def test_authorization_basic():
         for _ in range(10):
             try:
                 credentials = f"{login}:{password}"
-                encoded_credentials = base64.b64encode(
-                    credentials.encode()
-                ).decode()
+                encoded_credentials = base64.b64encode(credentials.encode()).decode()
                 header = {"Authorization": f"Basic {encoded_credentials}"}
                 response = requests.get(
                     "http://127.0.0.1:8080/protected_basic",
@@ -326,7 +309,7 @@ def test_range_header_support():
         for _ in range(10):
             try:
                 response = requests.get(
-                   "http://127.0.0.1:8080/project/tests/integration/test_file.txt",
+                    "http://127.0.0.1:8080/project/tests/integration/test_file.txt",
                     headers={"Range": "bytes=0-4"},
                 )
                 break
@@ -343,4 +326,3 @@ def test_range_header_support():
         process.terminate()
         if os.path.exists(file_path):
             os.remove(file_path)
-

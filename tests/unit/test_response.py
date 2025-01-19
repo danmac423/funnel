@@ -52,9 +52,7 @@ def test_json_response():
 
 def test_json_response_with_headers():
     data = {"key": "value"}
-    response = Response.json(
-        200, "OK", json_data=data, headers={"Test-Header": "Test Value"}
-    )
+    response = Response.json(200, "OK", json_data=data, headers={"Test-Header": "Test Value"})
     http_response = response.to_http().decode("utf-8")
 
     assert http_response.startswith("HTTP/1.1 200 OK")

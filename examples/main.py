@@ -25,9 +25,7 @@ def login(request):
 
     user = auth.user_source.get_user(username)
     if not user or password != user["password"]:
-        return Response.json(
-            401, "Unauthorized", {"error": "Invalid credentials"}
-        )
+        return Response.json(401, "Unauthorized", {"error": "Invalid credentials"})
 
     payload = {"username": username}
     token = auth.generate_token(payload)
@@ -42,9 +40,7 @@ def home(request):
 
 @server.route("/", methods=["GET"], host="example.com")
 def home_example(request):
-    return Response.html(
-        200, "OK", "<h1>Welcome to the Home Page of example.com host!</h1>"
-    )
+    return Response.html(200, "OK", "<h1>Welcome to the Home Page of example.com host!</h1>")
 
 
 @server.route("/about", methods=["GET"])
@@ -72,10 +68,12 @@ def handle_data(request):
         {"message": "Data received", "data": request.parsed_body},
     )
 
+
 @server.route("/data", methods=["DELETE"])
 def delete_data(request):
     remove_file(server, request)
     return Response.json(200, "OK", {"message": "Deleted"})
+
 
 @server.route("/internal_error", methods=["GET"])
 def wrong_code(request):

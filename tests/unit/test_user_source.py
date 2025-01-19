@@ -6,31 +6,23 @@ from funnel.user_source import JsonUserSource, UserSource
 
 
 def test_usersource_cannot_instantiate():
-    with pytest.raises(
-        TypeError, match="Can't instantiate abstract class UserSource"
-    ):
-        UserSource() # type: ignore
+    with pytest.raises(TypeError, match="Can't instantiate abstract class UserSource"):
+        UserSource()  # type: ignore
 
 
 def test_usersource_incomplete_subclass():
     class IncompleteUserSource(UserSource):
         pass
 
-    with pytest.raises(
-        TypeError,
-        match="Can't instantiate abstract class IncompleteUserSource"
-    ):
-        IncompleteUserSource() # type: ignore
+    with pytest.raises(TypeError, match="Can't instantiate abstract class IncompleteUserSource"):
+        IncompleteUserSource()  # type: ignore
 
 
 def test_usersource_get_user_not_implemented():
-    UserSource.__abstractmethods__ = set() # type: ignore
-    source = UserSource() # type: ignore
+    UserSource.__abstractmethods__ = set()  # type: ignore
+    source = UserSource()  # type: ignore
 
-    with pytest.raises(
-        NotImplementedError,
-        match="get_user method not implemented"
-    ):
+    with pytest.raises(NotImplementedError, match="get_user method not implemented"):
         source.get_user("test_user")
 
 
@@ -61,12 +53,14 @@ def invalid_users_structure(tmp_path):
     file_path.write_text(json.dumps(data))
     return file_path
 
+
 @pytest.fixture
 def invalid_user_format_no_username(tmp_path):
     file_path = tmp_path / "invalid_user.json"
     data = {"users": [{"not_username": "test_user", "password": "test_pass"}]}
     file_path.write_text(json.dumps(data))
     return file_path
+
 
 @pytest.fixture
 def invalid_user_format_no_dict(tmp_path):
@@ -87,6 +81,7 @@ def test_get_user_non_existing(valid_user_file):
     user = json_source.get_user("non_existing_user")
     assert user is None
 
+
 def test_invalid_json_format(invalid_user_file):
     json_source = JsonUserSource(invalid_user_file)
     with pytest.raises(ValueError, match="Invalid JSON format"):
@@ -101,9 +96,7 @@ def test_file_not_found(missing_file):
 
 def test_invalid_users_key(invalid_users_structure):
     json_source = JsonUserSource(invalid_users_structure)
-    with pytest.raises(
-        ValueError, match="Invalid data format: 'users' should be a list"
-    ):
+    with pytest.raises(ValueError, match="Invalid data format: 'users' should be a list"):
         json_source.get_user("test_user")
 
 

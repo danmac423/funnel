@@ -11,6 +11,7 @@ from funnel.user_source import JsonUserSource
 
 USER_DATA = {"users": [{"username": "test_user", "password": "test_pass"}]}
 
+
 @pytest.fixture
 def user_source(tmp_path):
     """Fixture to create a temporary JSON file with user data."""
@@ -51,8 +52,7 @@ def test_generate_token(auth):
 def test_decode_token(auth):
     payload = {
         "username": "test_user",
-        "exp": datetime.datetime.now(datetime.timezone.utc) +
-            datetime.timedelta(hours=1)
+        "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1),
     }
     token = jwt.encode(payload, Auth.SECRET_KEY, algorithm="HS256")
     decoded = auth.decode_token(token)
@@ -62,38 +62,30 @@ def test_decode_token(auth):
 def test_decode_token_expired(auth):
     payload = {
         "username": "testuser",
-        "exp": datetime.datetime.now(datetime.timezone.utc) -
-            datetime.timedelta(hours=1)
-        }
+        "exp": datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1),
+    }
     token = jwt.encode(payload, Auth.SECRET_KEY, algorithm="HS256")
-    with pytest.raises(
-        ValueError, match="Token has expired. Please log in again."
-    ):
+    with pytest.raises(ValueError, match="Token has expired. Please log in again."):
         auth.decode_token(token)
 
 
 def test_decode_token_invalid(auth):
     invalid_token = "invalid_token"
-    with pytest.raises(
-        ValueError, match="Invalid token. Please log in again."
-    ):
+    with pytest.raises(ValueError, match="Invalid token. Please log in again."):
         auth.decode_token(invalid_token)
 
 
 def test_authenticate_user_bearer(auth):
     payload = {
         "username": "test_user",
-        "exp": datetime.datetime.now(datetime.timezone.utc) +
-            datetime.timedelta(hours=1)
-        }
+        "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1),
+    }
     token = jwt.encode(payload, Auth.SECRET_KEY, algorithm="HS256")
     auth.authenticate_user_bearer(token)
 
 
 def test_authenticate_user_bearer_invalid(auth):
-    token = jwt.encode({
-        "username": "unknown_user"
-        }, Auth.SECRET_KEY, algorithm="HS256")
+    token = jwt.encode({"username": "unknown_user"}, Auth.SECRET_KEY, algorithm="HS256")
     with pytest.raises(ValueError, match="User not found"):
         auth.authenticate_user_bearer(token)
 
@@ -101,9 +93,8 @@ def test_authenticate_user_bearer_invalid(auth):
 def test_authenticate_user_bearer_no_source(auth):
     payload = {
         "username": "test_user",
-        "exp": datetime.datetime.now(datetime.timezone.utc) +
-            datetime.timedelta(hours=1)
-        }
+        "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1),
+    }
     token = jwt.encode(payload, Auth.SECRET_KEY, algorithm="HS256")
     auth.user_source = None
     with pytest.raises(AttributeError, match="User source not configured"):
@@ -126,9 +117,7 @@ def test_authenticate_user_basic_missing_colon():
 
     encoded_credentials = base64.b64encode(b"usernamepassword").decode("utf-8")
 
-    with pytest.raises(
-        ValueError, match="Invalid credentials: not enough values to unpack"
-    ):
+    with pytest.raises(ValueError, match="Invalid credentials: not enough values to unpack"):
         auth.authenticate_user_basic(encoded_credentials)
 
 
@@ -141,9 +130,7 @@ def test_authenticate_user_basic_no_source(auth):
 
 def test_authenticate_decorator_bearer(auth, mocker):
     request = mocker.MagicMock()
-    token = jwt.encode({
-        "username": "test_user"
-    }, Auth.SECRET_KEY, algorithm="HS256")
+    token = jwt.encode({"username": "test_user"}, Auth.SECRET_KEY, algorithm="HS256")
     request.headers = {"Authorization": f"Bearer {token}"}
 
     @auth.authenticate("Bearer")
@@ -159,12 +146,11 @@ def test_authenticate_decorator_bearer_invalid_header(auth, mocker):
 
     @auth.authenticate("Bearer")
     def protected_route(req):
-       return "Access granted"
+        return "Access granted"
 
     with pytest.raises(
-        BadRequestError,
-        match="BadRequestError: Missing or invalid Bearer Auth header"
-        ):
+        BadRequestError, match="BadRequestError: Missing or invalid Bearer Auth header"
+    ):
         protected_route(request)
 
 
@@ -176,9 +162,7 @@ def test_authenticate_decorator_bearer_missing_token(auth, mocker):
     def protected_route(req):
         return "Access granted"
 
-    with pytest.raises(
-        UnauthorizedError, match="Unauthorized: Missing or invalid token"
-        ):
+    with pytest.raises(UnauthorizedError, match="Unauthorized: Missing or invalid token"):
         protected_route(request)
 
 
@@ -186,19 +170,13 @@ def test_authenticate_decorator_bearer_error(auth, mocker):
     request = mocker.MagicMock()
     request.headers = {"Authorization": "Bearer invalid_token"}
 
-    mocker.patch.object(
-        auth,
-        "authenticate_user_bearer",
-        side_effect=ValueError("Invalid user")
-    )
+    mocker.patch.object(auth, "authenticate_user_bearer", side_effect=ValueError("Invalid user"))
 
     @auth.authenticate("Bearer")
     def protected_route(req):
         return "Access granted"
 
-    with pytest.raises(
-        UnauthorizedError, match="Authorization failed: Invalid user"
-        ):
+    with pytest.raises(UnauthorizedError, match="Authorization failed: Invalid user"):
         protected_route(request)
 
 
@@ -207,9 +185,7 @@ def test_authenticate_decorator_basic(auth, mocker):
     credentials = base64.b64encode(b"test_user:test_pass").decode("utf-8")
     request.headers = {"Authorization": f"Basic {credentials}"}
 
-    auth.user_source.get_user = mocker.MagicMock(
-        return_value=USER_DATA["users"][0]
-    )
+    auth.user_source.get_user = mocker.MagicMock(return_value=USER_DATA["users"][0])
 
     @auth.authenticate("Basic")
     def protected_route(req):
@@ -224,11 +200,10 @@ def test_authenticate_decorator_basic_invalid_header(auth, mocker):
 
     @auth.authenticate("Basic")
     def protected_route(req):
-       return "Access granted"
+        return "Access granted"
 
     with pytest.raises(
-        BadRequestError,
-        match="BadRequestError: Missing or invalid Basic Auth header"
+        BadRequestError, match="BadRequestError: Missing or invalid Basic Auth header"
     ):
         protected_route(request)
 
@@ -238,18 +213,14 @@ def test_authenticate_decorator_basic_error(auth, mocker):
     request.headers = {"Authorization": "Basic invalid_credentials"}
 
     mocker.patch.object(
-        auth,
-        "authenticate_user_basic",
-        side_effect=ValueError("Invalid credentials")
+        auth, "authenticate_user_basic", side_effect=ValueError("Invalid credentials")
     )
 
     @auth.authenticate("Basic")
     def protected_route(req):
         return "Access granted"
 
-    with pytest.raises(
-        UnauthorizedError, match="Authorization failed: Invalid credentials"
-    ):
+    with pytest.raises(UnauthorizedError, match="Authorization failed: Invalid credentials"):
         protected_route(request)
 
 
@@ -261,10 +232,7 @@ def test_authenticate_decorator_no_header(auth, mocker):
     def protected_route(req):
         return "Access granted"
 
-    with pytest.raises(
-        BadRequestError,
-        match="BadRequestError: Missing or invalid Auth header"
-    ):
+    with pytest.raises(BadRequestError, match="BadRequestError: Missing or invalid Auth header"):
         protected_route(request)
 
 

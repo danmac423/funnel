@@ -16,9 +16,7 @@ def test_get_missing_directory():
     try:
         for _ in range(10):
             try:
-                response = requests.get(
-                    "http://127.0.0.1:8080/project/tests/missing/"
-                )
+                response = requests.get("http://127.0.0.1:8080/project/tests/missing/")
                 break
             except requests.ConnectionError:
                 time.sleep(0.5)
@@ -38,9 +36,7 @@ def test_get_missing_file():
     try:
         for _ in range(10):
             try:
-                response = requests.get(
-                    "http://127.0.0.1:8080/project/tests/missing.jpg"
-                )
+                response = requests.get("http://127.0.0.1:8080/project/tests/missing.jpg")
                 break
             except requests.ConnectionError:
                 time.sleep(0.5)
@@ -60,9 +56,7 @@ def test_invalid_host():
     try:
         for _ in range(10):
             try:
-                response = requests.get(
-                    "http://127.0.0.1:8080/", headers={"host": "invalid.coms"}
-                )
+                response = requests.get("http://127.0.0.1:8080/", headers={"host": "invalid.coms"})
                 break
             except requests.ConnectionError:
                 time.sleep(0.5)
@@ -127,9 +121,7 @@ def test_authorization_basic_wrong_creds():
         for _ in range(10):
             try:
                 credentials = f"{login}:{password}"
-                encoded_credentials = base64.b64encode(
-                    credentials.encode()
-                ).decode()
+                encoded_credentials = base64.b64encode(credentials.encode()).decode()
                 header = {"Authorization": f"Basic {encoded_credentials}"}
                 response = requests.get(
                     "http://127.0.0.1:8080/protected_basic",
@@ -290,7 +282,6 @@ def test_out_of_bounds_range():
     with open(file_path, "w") as f:
         f.write("This is a test file for Range header support.")
 
-
     try:
         for _ in range(10):
             try:
@@ -321,7 +312,6 @@ def test_invalid_range():
     file_path = os.path.join("tests/integration/", "test_file.txt")
     with open(file_path, "w") as f:
         f.write("This is a test file for Range header support.")
-
 
     try:
         for _ in range(10):

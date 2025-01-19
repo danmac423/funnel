@@ -46,9 +46,7 @@ def test_add_duplicate_route():
 
     router._add_route("/duplicate", ["GET"], handler)
 
-    with pytest.raises(
-        ValueError, match="Route already exists for GET /duplicate"
-    ):
+    with pytest.raises(ValueError, match="Route already exists for GET /duplicate"):
         router._add_route("/duplicate", ["GET"], handler)
 
 
@@ -116,9 +114,7 @@ def test_match_static_over_dynamic():
 def test_not_found_static_route():
     router = Router()
 
-    with pytest.raises(
-        NotFoundError, match="No route found for path: /nonexistent"
-    ):
+    with pytest.raises(NotFoundError, match="No route found for path: /nonexistent"):
         router.get_handler("/nonexistent", "GET")
 
 
@@ -130,9 +126,7 @@ def test_not_found_dynamic_route():
 
     router._add_route("/dynamic/<path:subpath>", ["GET"], handler)
 
-    with pytest.raises(
-        NotFoundError, match="No route found for path: /nonexistent"
-    ):
+    with pytest.raises(NotFoundError, match="No route found for path: /nonexistent"):
         router.get_handler("/nonexistent", "GET")
 
 
@@ -198,9 +192,6 @@ def test_decorator_with_host():
     def handler():
         return "Decorated with Host"
 
-    assert (
-        router.get_handler("/decorated", "GET", host="example.com")()
-        == "Decorated with Host"
-    )
+    assert router.get_handler("/decorated", "GET", host="example.com")() == "Decorated with Host"
     with pytest.raises(NotFoundError):
         router.get_handler("/decorated", "GET")
