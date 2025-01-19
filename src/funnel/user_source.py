@@ -1,16 +1,25 @@
+"""User source module."""
+
 import json
 from abc import ABC, abstractmethod
 from typing import Optional
 
 
 class UserSource(ABC):
+    """Abstract base class for user sources."""
 
     @abstractmethod
     def get_user(self, username: str) -> Optional[dict]:
+        """Get user data. Must be implemented by subclasses."""
         raise NotImplementedError("get_user method not implemented")
 
 
 class JsonUserSource(UserSource):
+    """User source that reads user data from a JSON file.
+
+    Args:
+        file_path (str): Path to the JSON file.
+    """
     def __init__(self, file_path: str):
         self.file_path = file_path
 
