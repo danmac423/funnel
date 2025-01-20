@@ -18,14 +18,14 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 ## **Założenia funkcjonalne**
 
 1. **Konfiguracja serwera**
-   - Serwer odczytuje konfigurację z pliku **YAML** lub **TOML**.
+   - Serwer odczytuje konfigurację z pliku **YAML**.
    - Plik konfiguracyjny zawiera:
      - Host i port serwera,
-     - Mapowanie ścieżek HTTP na katalogi lokalne,
+     - Mapowanie tras HTTP na katalogi lokalne,
      - Reguły autoryzacji dla zasobów (**Basic** i **Bearer**).
 
 2. **Routing i montowanie katalogów**
-   - Serwer obsługuje mapowanie katalogów lokalnych na zadane ścieżki HTTP.
+   - Serwer obsługuje mapowanie katalogów lokalnych na zadane trasy HTTP.
    - Bezpieczeństwo montowanych katalogów:
      - Serwer blokuje dostęp do zasobów poza zamontowanymi katalogami.
 
@@ -39,7 +39,7 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
    - Żądanie **GET** dla katalogu (np. `/static/`) generuje dynamiczną listę plików i podkatalogów w formacie HTML.
 
 5. **Obsługa autoryzacji**
-   - Możliwość zabezpieczenia wybranych ścieżek za pomocą:
+   - Możliwość zabezpieczenia wybranych tras za pomocą:
      - **Basic Authorization**: Weryfikacja loginu i hasła.
      - **Bearer Authorization**: Weryfikacja tokena dostępowego.
    - Nieautoryzowane żądania zwracają **401 Unauthorized**.
@@ -90,11 +90,11 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
    - Wykorzystuje standardowe biblioteki Pythona (wersja **3.13**).
 
 3. **Bezpieczeństwo**
-   - Serwer blokuje dostęp do katalogów poza zdefiniowanymi ścieżkami.
+   - Serwer blokuje dostęp do katalogów poza zdefiniowanymi trasami.
    - Obsługa autoryzacji **Basic** i **Bearer** dla chronionych zasobów.
 
 4. **Konfiguracja**
-   - Wszystkie ustawienia serwera (host, port, mapowanie katalogów, autoryzacja) są definiowane w pliku **YAML** lub **TOML**.
+   - Wszystkie ustawienia serwera (host, port, mapowanie katalogów, autoryzacja) są definiowane w pliku **YAML**.
 
 5. **Testowalność**
    - **Testy jednostkowe**: Sprawdzają poprawność kluczowych funkcji serwera (routing, autoryzacja, obsługa plików).
@@ -112,7 +112,7 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 ## **Przypadki użycia**
 
 1. **Uruchomienie serwera HTTP z konfiguracją**
-   - **Scenariusz**: Administrator uruchamia serwer, podając ścieżkę do pliku konfiguracyjnego YAML/TOML.
+   - **Scenariusz**: Administrator uruchamia serwer, podając ścieżkę do pliku konfiguracyjnego YAML.
    - **Opis działania**:
      - Biblioteka odczytuje konfigurację zawierającą host, port, mapowanie katalogów i reguły autoryzacji.
      - Serwer startuje na zdefiniowanym hoście i porcie.
@@ -123,7 +123,7 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 2. **Dostęp do statycznych plików**
    - **Scenariusz**: Użytkownik wysyła żądanie **GET** na ścieżkę `/static/file.txt`.
    - **Opis działania**:
-     - Serwer sprawdza konfigurację i mapuje ścieżkę HTTP `/static` na lokalny katalog (np. `/var/www/static`).
+     - Serwer sprawdza konfigurację i mapuje trasę `/static` na lokalny katalog (np. `/var/www/static`).
      - Serwer odszukuje plik `file.txt` i zwraca go klientowi z kodem **200 OK**.
    - **Rezultat**: Plik jest poprawnie zwracany klientowi.
 
@@ -161,7 +161,7 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 ---
 
 6. **Przesyłanie danych na serwer (POST)**
-   - **Scenariusz**: Użytkownik wysyła żądanie **POST** na ścieżkę `/upload` z danymi JSON.
+   - **Scenariusz**: Użytkownik wysyła żądanie **POST** na trasę `/upload` z danymi JSON.
    - **Opis działania**:
      - Serwer odbiera dane, weryfikuje ich poprawność i zapisuje je jako plik na serwerze.
      - Serwer zwraca odpowiedź **201 Created**.
@@ -200,7 +200,7 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 ## **Analiza i obsługa błędnych sytuacji**
 
 1. **Brak lub niepoprawna konfiguracja serwera**
-   - **Sytuacja błędna**: Plik konfiguracyjny YAML/TOML jest nieprawidłowy lub brakuje wymaganych parametrów (np. host, port, ścieżki).
+   - **Sytuacja błędna**: Plik konfiguracyjny YAML jest nieprawidłowy lub brakuje wymaganych parametrów (np. host, port, ścieżki).
    - **Obsługa**:
      - Serwer wyświetla komunikat błędu i przerywa działanie.
      - Przykładowa wiadomość:
@@ -330,7 +330,7 @@ $ uv sync
 $ uv pip install -e .
 ```
 
-Nasza biblioteka umożliwia dodawanie ścieżek (route) przez dektorator. Aby uruchomić przykładowy serwer HTTP należy wywołać komendę:
+Nasza biblioteka umożliwia dodawanie tras (route) przez dektorator. Aby uruchomić przykładowy serwer HTTP należy wywołać komendę:
 
 ```
 $ python3 examples/main.py
@@ -340,16 +340,16 @@ $ python3 examples/main.py
 
 ## **Opis interfejsu użytkownika**
 
-Zaimplementowany został dekorator *route*, który umożliwia dodanie ścieżki do serwera.
+Zaimplementowany został dekorator *route*, który umożliwia dodanie trasy do serwera.
 
 Struktura:
 ```python
 @server.route(<path>, <methods>, <host>)
 ```
 
-**path** - adres ściezki
+**path** - adres trasy
 
-**methods** - lista metod obsługiwanych pod daną ściezką
+**methods** - lista metod obsługiwanych pod daną trasą
 
 **host** - opcjonalny argument oznaczający adres hosta. W przypadku gdy host jest zdefiniowany, żądzanie musi zawierać dokładną nazwę hosta, aby zostało odbrane. Jezeli host nie zostanie podany żądania będą obsługiwane nieżaleznie od wartości nagłówka Host.
 
@@ -415,7 +415,7 @@ System składa się z **dwóch głównych części**:
    - Tworzy podstawową funkcjonalność umożliwiającą obsługę serwera HTTP.
    - Główne elementy biblioteki:
      - **Komunikacja sieciowa**: Odpowiada za tworzenie gniazd (`socket`) i obsługę połączeń od klientów.
-     - **Routing**: Mapuje ścieżki HTTP na funkcje obsługi żądań.
+     - **Routing**: Mapuje trasy HTTP na funkcje obsługi żądań.
      - **Obsługa żądań i odpowiedzi**: Przetwarza przychodzące żądania i generuje odpowiedzi HTTP z odpowiednimi kodami statusu.
      - **Autoryzacja**: Weryfikuje poprawność nagłówków autoryzacyjnych (**Basic** i **Bearer Authorization**).
      - **Logowanie**: Rejestruje informacje o żądaniach i błędach serwera do logów.
@@ -423,8 +423,8 @@ System składa się z **dwóch głównych części**:
 2. **Aplikacja serwera HTTP**
    - Korzysta z opracowanej biblioteki do implementacji działającego serwera HTTP.
    - Wykorzystuje możliwości biblioteki do:
-     - Montowania lokalnych katalogów pod zdefiniowanymi ścieżkami HTTP,
-     - Konfiguracji serwera (host, port, autoryzacja) z pliku **YAML/TOML**,
+     - Montowania lokalnych katalogów pod zdefiniowanymi trasami HTTP,
+     - Konfiguracji serwera (host, port, autoryzacja) z pliku **YAML**,
      - Definiowania reguł autoryzacji i tras (routingu),
      - Testowania i uruchomienia serwera w środowisku lokalnym.
 
@@ -436,7 +436,7 @@ System składa się z **dwóch głównych części**:
 Testy jednostkowe sprawdzają poprawność działania poszczególnych komponentów biblioteki.
 - **Zakres testów**:
    - Weryfikacja poprawnego przetwarzania żądań HTTP (GET, POST, DELETE).
-   - Sprawdzenie działania routingu i mapowania ścieżek.
+   - Sprawdzenie działania routingu i mapowania tras.
    - Testowanie mechanizmów autoryzacji (**Basic** i **Bearer Authorization**).
    - Generowanie odpowiedzi HTTP z poprawnymi nagłówkami i statusami.
    - Obsługa błędów (np. brak zasobu, nieprawidłowe żądanie).
@@ -484,7 +484,7 @@ Napisane testy jednostkowe zapewniły porycie linii kodu na poziomie 100%.
 
 ### **Daniel Machniak: Komunikacja sieciowa i konfiguracja**
 - Implementacja mechanizmu **routingu**:
-   - Mapowanie ścieżek HTTP na funkcje obsługi.
+   - Mapowanie tras HTTP na funkcje obsługi.
 - Implementacja mechanizmu **niskopoziomowej komunikacji** przy użyciu `socket`:
    - Tworzenie gniazd, nasłuchiwanie połączeń, akceptowanie klientów.
 - Dodanie obsługi wielowątkowości z wykorzystaniem **threading**.
@@ -495,7 +495,7 @@ Napisane testy jednostkowe zapewniły porycie linii kodu na poziomie 100%.
 ---
 
 ### **Krzysztof Gólcz: Routing i obsługa żądań**
-- Wczytywanie konfiguracji serwera (host, port, ścieżki) z pliku **YAML/TOML**.
+- Wczytywanie konfiguracji serwera (host, port, ścieżki) z pliku **YAML**.
 - Obsługa podstawowych metod HTTP (**DELETE**)
 - Implementacjia funkcjonalności montowania katalogów.
 - Przygotowanie **testów jednostkowych** i **testów integracyjnych** dla poszczególnych komponentów.
@@ -525,8 +525,8 @@ Napisane testy jednostkowe zapewniły porycie linii kodu na poziomie 100%.
 
 1. **Uruchomienie serwera**
 
-2. **Routing i obsługa ścieżek**
-   - Mapowanie ścieżek HTTP na funkcje obsługi.
+2. **Routing i obsługa tras**
+   - Mapowanie tras HTTP na funkcje obsługi.
    - Przykłady:
      - **GET** `/hello` – zwrócenie komunikatu tekstowego,
      - **POST** `/echo` – odbiór danych JSON i ich zwrócenie w odpowiedzi.
@@ -546,7 +546,7 @@ Napisane testy jednostkowe zapewniły porycie linii kodu na poziomie 100%.
      - **405 Method Not Allowed** – metoda nieobsługiwana.
 
 6. **Logowanie żądań**
-   - Rejestrowanie podstawowych informacji o żądaniach: metoda, ścieżka, status odpowiedzi.
+   - Rejestrowanie podstawowych informacji o żądaniach: metoda, trasa, status odpowiedzi.
    - Zapis logów do pliku tekstowego.
 
 ---
@@ -555,11 +555,11 @@ Napisane testy jednostkowe zapewniły porycie linii kodu na poziomie 100%.
 
 ### **Tydzień 1: Przygotowanie środowiska i implementacja podstaw serwera**
 
- - Przygotowanie struktury projektu i pliku konfiguracyjnego **YAML/TOML**.
+ - Przygotowanie struktury projektu i pliku konfiguracyjnego **YAML**.
  - Implementacja komunikacji sieciowej z użyciem `socket`:
    - Tworzenie gniazda, nasłuchiwanie połączeń i akceptowanie klientów.
  - Implementacja podstawowego routingu:
-   - Obsługa prostych ścieżek **GET**.
+   - Obsługa prostych tras **GET**.
  - Stworzenie mechanizmu logowania żądań.
 
 **Wynik tygodnia**: Serwer przyjmuje połączenia, obsługuje proste żądanie **GET**, loguje żądania.
@@ -578,7 +578,7 @@ Napisane testy jednostkowe zapewniły porycie linii kodu na poziomie 100%.
 
 ### **Tydzień 3: Finalizacja kluczowych funkcji (odbiór częściowy)**
 
- - Dodanie montowania katalogów lokalnych pod ścieżki HTTP (np. `/static`).
+ - Dodanie montowania katalogów lokalnych pod trasy HTTP (np. `/static`).
  - Weryfikacja obsługi błędów:
    - **404 Not Found**, **405 Method Not Allowed**.
  - Rozszerzenie autoryzacji o **Bearer Authorization**.
@@ -655,10 +655,10 @@ Generuje odpowiedzi HTTP
 
 #### **Klasa `Router`**
 
-Zarządza wszystkimi zarejestrowanymi ścieżkami i przypisanymi do nich handlerami.
+Zarządza wszystkimi zarejestrowanymi trasami i przypisanymi do nich handlerami.
 
 **Atrybuty:**
-- `static_routes`: Słownik dla statycznych ścieżek o strukturze:
+- `static_routes`: Słownik dla statycznych tras o strukturze:
   ```python
   {
     RouteKey(host, path): {
@@ -668,14 +668,14 @@ Zarządza wszystkimi zarejestrowanymi ścieżkami i przypisanymi do nich handler
     }
   }
   ```
-- `dynamic_routes`: Lista obsługująca ścieżki dynamiczne z parametrami (np. `/user/<id>`), zawierająca krotki:
+- `dynamic_routes`: Lista obsługująca trasy dynamiczne z parametrami (np. `/user/<id>`), zawierająca krotki:
   ```python
   [(RouteKey, regex, methods)]
   ```
 
 **Kluczowe metody:**
-- `_add_route`: Dodaje nową ścieżkę do statycznych lub dynamicznych tras.
-- `get_handler`: Wyszukuje odpowiedni handler dla danej ścieżki i metody HTTP. Obsługuje zarówno statyczne, jak i dynamiczne trasy.
+- `_add_route`: Dodaje nową trasę do statycznych lub dynamicznych tras.
+- `get_handler`: Wyszukuje odpowiedni handler dla danej trasy i metody HTTP. Obsługuje zarówno statyczne, jak i dynamiczne trasy.
 - `route`: Dekorator ułatwiający rejestrowanie tras w kodzie aplikacji.
 
 ---
@@ -685,7 +685,7 @@ Odpowiada za główną logikę serwera HTTP. Jest to punkt wejścia całej aplik
 
 **Atrybuty:**
 - `host` i `port`: Adres i port, na którym działa serwer, pobrane z pliku konfiguracyjnego.
-- `router`: Obiekt klasy `Router` odpowiedzialny za rejestrowanie i rozpoznawanie ścieżek oraz przypisywanie ich do odpowiednich handlerów.
+- `router`: Obiekt klasy `Router` odpowiedzialny za rejestrowanie i rozpoznawanie tras oraz przypisywanie ich do odpowiednich handlerów.
 - `executor`: Obiekt klasy `ThreadPoolExecutor`, który umożliwia obsługę wielu żądań jednocześnie w osobnych wątkach.
 - `_server_socket`: Główne gniazdo serwera do nasłuchiwania przychodzących połączeń.
 
@@ -735,7 +735,7 @@ Dostarcza podstawowe funkcje narzędziowe wspierające działanie frameworka `Fu
 #### **Funkcje obsługujące konfigurację i montowanie katalogów**
 
 - `load_config`: Wczytuje konfigurację serwera z pliku YAML.
-- `mount_directories`: Montuje katalogi jako ścieżki w routerze. Bazując na konfiguracji, rejestruje dynamiczne handlery umożliwiające operacje GET, POST oraz DELETE dla podanych ścieżek.
+- `mount_directories`: Montuje katalogi jako trasy w routerze. Bazując na konfiguracji, rejestruje dynamiczne handlery umożliwiające operacje GET, POST oraz DELETE dla podanych tras.
 - `directory_handler_factory`: Generuje handler obsługujący żądania HTTP dla określonego katalogu. Handler umożliwia dynamiczne serwowanie plików i katalogów oraz zapis przesyłanych danych JSON.
 
 #### **Funkcje operacji na plikach**
