@@ -634,6 +634,8 @@ Reprezentuje żądanie HTTP. Jest odpowiedzialna za parsowanie surowych danych z
 - `_parse_body`: Odczytuje ciało żądania na podstawie nagłówka Content-Length.
 - `_parse_body_content`: Sparsowane ciało żądania jest konwertowane na JSON lub dane formularza, zależnie od nagłówka `Content-Type`.
 
+---
+
 #### **Klasa `Response`**
 
 Generuje odpowiedzi HTTP
@@ -676,6 +678,8 @@ Zarządza wszystkimi zarejestrowanymi ścieżkami i przypisanymi do nich handler
 - `get_handler`: Wyszukuje odpowiedni handler dla danej ścieżki i metody HTTP. Obsługuje zarówno statyczne, jak i dynamiczne trasy.
 - `route`: Dekorator ułatwiający rejestrowanie tras w kodzie aplikacji.
 
+---
+
 #### **Klasa `HTTPServer`**
 Odpowiada za główną logikę serwera HTTP. Jest to punkt wejścia całej aplikacji, który obsługuje przychodzące żądania HTTP, deleguje je do odpowiednich handlerów za pomocą routera i zarządza konfiguracją serwera.
 
@@ -694,6 +698,64 @@ Odpowiada za główną logikę serwera HTTP. Jest to punkt wejścia całej aplik
   - Generuje odpowiedź za pomocą klasy Response.
 - `_receive_headers` i `_receive_body`: Obsługują odczyt danych z gniazda klienta, dzieląc je na nagłówki i ciało.
 - `stop`: Zatrzymuje serwer w sposób bezpieczny, zamykając wszystkie otwarte zasoby.
+
+---
+
+#### **Klasa `Auth`**
+Obsługuje mechanizmy uwierzytelniania i autoryzacji w systemie HTTP. Dostarcza funkcjonalności generowania i weryfikacji tokenów JWT, uwierzytelniania użytkowników przy użyciu metod Bearer i Basic, a także dekoratora do zabezpieczania endpointów.
+
+**Atrybuty klasy:**
+- `SECRET_KEY`: Klucz tajny używany do podpisywania i weryfikacji tokenów JWT. Ładowany z pliku .env.
+
+**Atrybuty instancji:**
+- `user_source`: Źródło danych użytkowników (obiekt klasy UserSource), wykorzystywane do weryfikacji użytkowników podczas uwierzytelniania.
+
+**Kluczowe metody:**
+- `configure_user_source`: Konfiguruje źródło danych użytkowników.
+- `generate_token`: Generuje token JWT na podstawie danych użytkownika oraz określonego czasu ważności.
+- `decode_token`: Dekoduje i weryfikuje token JWT.
+- `authenticate_user_bearer`: Weryfikuje poprawność tokena Bearer, dekoduje go i sprawdza obecność użytkownika w źródle danych.
+- `authenticate_user_basic`: Dekoduje dane logowania przesłane w nagłówku Basic Auth, a następnie weryfikuje użytkownika w źródle danych.
+- `authenticate`: Dekorator zabezpieczający endpointy. Obsługuje zarówno autoryzację Bearer, jak i Basic.
+
+---
+
+#### **Klasa `UserSource`**
+- Klasa bazowa, definiująca interfejs dla źródeł danych użytkowników. Klasa wymaga implementacji metody get_user przez klasy dziedziczące.
+
+**Metody abstrakcyjne**
+- `get_user`: Abstrakcyjna metoda odpowiedzialna za pobieranie danych użytkownika na podstawie nazwy użytkownika.
+
+---
+
+### **Moduł `utils`**
+
+Dostarcza podstawowe funkcje narzędziowe wspierające działanie frameworka `Funnel`. Głównym celem jest obsługa konfiguracji, zarządzanie plikami, katalogami oraz odpowiedziami HTTP.
+
+#### **Funkcje obsługujące konfigurację i montowanie katalogów**
+
+- `load_config`: Wczytuje konfigurację serwera z pliku YAML.
+- `mount_directories`: Montuje katalogi jako ścieżki w routerze. Bazując na konfiguracji, rejestruje dynamiczne handlery umożliwiające operacje GET, POST oraz DELETE dla podanych ścieżek.
+- `directory_handler_factory`: Generuje handler obsługujący żądania HTTP dla określonego katalogu. Handler umożliwia dynamiczne serwowanie plików i katalogów oraz zapis przesyłanych danych JSON.
+
+#### **Funkcje operacji na plikach**
+
+- `save_json_file`: Zapisuje dane JSON przesłane w żądaniu HTTP POST do podanego katalogu.
+- `delete_file`: Usuwa plik znajdujący się pod podaną ścieżką.
+
+#### **Funkcje zarządzania katalogami i ścieżkami**
+
+- `resolve_requested_path`: Oblicza pełną, znormalizowaną ścieżkę dla żądania HTTP na podstawie bazy katalogów i konfiguracji serwera.
+- `serve_directory`: Generuje listę zawartości katalogu w formacie HTML, umożliwiając przeglądanie plików przez przeglądarkę.
+- `serve_file`: Odpowiada na żądanie HTTP GET, przesyłając plik do klienta. Obsługuje nagłówki Range, umożliwiając pobieranie fragmentów pliku.
+
+#### **Funkcje obsługi nagówka `Range`**
+- `parse_range_header`: Parsuje i waliduje nagłówek Range, określający zakres bajtów pliku do przesłania.
+- `read_file_range`: Czyta fragment pliku z określonego zakresu bajtów.
+- `generate_range_headers`: Tworzy nagłówki HTTP dla odpowiedzi obejmujących zakres bajtów pliku (funkcja wspierająca Range).
+- `generate_full_file_headers`:Generuje nagłówki HTTP dla pełnych plików.
+
+---
 
 ## **Postać plików konfiguracyjnych oraz logów**
 
