@@ -1,5 +1,4 @@
 from funnel.auth import Auth
-from funnel.endpoint_utils import remove_file
 from funnel.funnel import HTTPServer
 from funnel.response import Response
 from funnel.user_source import JsonUserSource
@@ -67,12 +66,6 @@ def handle_data(request):
         "Created",
         {"message": "Data received", "data": request.parsed_body},
     )
-
-
-@server.route("/data", methods=["DELETE"])
-def delete_data(request):
-    remove_file(server, request)
-    return Response.json(200, "OK", {"message": "Deleted"})
 
 
 @server.route("/internal_error", methods=["GET"])
