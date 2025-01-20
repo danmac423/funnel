@@ -784,4 +784,6 @@ time - logger_name - levelname - client_addres:port - message
 
 ## **Podsumowanie**
 
+Projekt `Funnel` implementuje lekki serwer HTTP, który zapewnia obsługę żądań i odpowiedzi HTTP, zarządzanie trasami, operacje na plikach oraz uwierzytelnianie użytkowników. Rozwiązanie zostało zaprojektowane z myślą o prostocie użytkowania, inspirowanej popularnymi frameworkami, takimi jak `Flask`. Dzięki dekoratorom route i auth konfiguracja tras oraz zabezpieczanie endpointów są intuicyjne i minimalizują kod potrzebny do implementacji.
+
 ---
