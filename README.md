@@ -340,6 +340,8 @@ $ python3 examples/main.py
 
 ## **Opis interfejsu użytkownika**
 
+### Dekorator route
+
 Zaimplementowany został dekorator *route*, który umożliwia dodanie trasy do serwera.
 
 Struktura:
@@ -364,6 +366,32 @@ def home_example(request):
         200, "OK", "<h1>Welcome to the Home Page of example.com host!</h1>"
     )
 ```
+
+### Dekorator auth
+
+Dekorator umożliwa zabezpieczenie endpointu autoryzacją **Basic** lub **Bearer**.
+
+Struktura:
+
+```python
+@auth.authenticate(type=<type>)
+```
+
+**type** - rodzaj autoryzacji `"Basic"` lub `"Bearer"`.
+
+Przykład użycia:
+
+```python
+auth = Auth()
+auth.configure_user_source(JsonUserSource("users.json"))
+
+@server.route("/protected_bearer", methods=["GET"])
+@auth.authenticate(type="Bearer")
+def protected_endpoint_bearer(request):
+    return Response.json(200, "OK", {"message": "Welcome!"})
+```
+
+
 ---
 
 ## **Środowisko sprzętowo-programowe i narzędziowe**
@@ -488,7 +516,7 @@ Napisane testy jednostkowe zapewniły porycie linii kodu na poziomie 100%.
 - Implementacja mechanizmu **niskopoziomowej komunikacji** przy użyciu `socket`:
    - Tworzenie gniazd, nasłuchiwanie połączeń, akceptowanie klientów.
 - Dodanie obsługi wielowątkowości z wykorzystaniem **threading**.
-- Obsługa podstawowych metod HTTP (**GET**)
+- Obsługa podstawowych metod HTTP (**GET**).
 - Implementacjia funkcjonalności montowania katalogów.
 - Przygotowanie **testów jednostkowych** i **testów integracyjnych** dla poszczególnych komponentów.
 
