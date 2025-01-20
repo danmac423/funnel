@@ -202,10 +202,10 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 1. **Brak lub niepoprawna konfiguracja serwera**
    - **Sytuacja błędna**: Plik konfiguracyjny YAML jest nieprawidłowy lub brakuje wymaganych parametrów (np. host, port, ścieżki).
    - **Obsługa**:
-     - Serwer wyświetla komunikat błędu i przerywa działanie.
-     - Przykładowa wiadomość:
-       ```
-       Error: Invalid configuration file. Missing required parameter: 'port'.
+     - Serwer ustawia wartości domyślne tych pól (host: "127.0.0.1", port: 8080)
+     - W przypadku braku pliku konfiguracyjnego (niepoprawna ścieżka) serwer zwraca wiadomość:
+      ```
+      FileNotFoundError: Configuration file not found: ./config/a/server_config.yaml
        ```
 
 ---
@@ -216,7 +216,7 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
      - Serwer zwraca odpowiedź **404 Not Found** z komunikatem:
        ```json
        {
-         "error": "The requested resource was not found."
+         "error": "File not found."
        }
        ```
 
@@ -225,10 +225,10 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 3. **Niepoprawny nagłówek Host**
    - **Sytuacja błędna**: Użytkownik wysyła żądanie z niepoprawnym nagłówkiem **Host**.
    - **Obsługa**:
-     - Serwer weryfikuje nagłówek **Host** i zwraca **400 Bad Request**:
+     - Serwer weryfikuje nagłówek **Host** i zwraca zawartość z endpointu "/". W przypadku gdy endpoint taki nie istnieje zwracany jest błąd 404 z informacją:
        ```json
        {
-         "error": "Invalid Host header. The host is not recognized by the server."
+         "error": "No route found for path: /"
        }
        ```
 
@@ -240,7 +240,7 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
      - Serwer zwraca odpowiedź **400 Bad Request** z komunikatem:
        ```json
        {
-         "error": "Authorization header is missing."
+         "error": "BadRequestError: Missing or invalid Auth header"
        }
        ```
 
@@ -249,34 +249,34 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 5. **Niepoprawne dane autoryzacyjne**
    - **Sytuacja błędna**: Użytkownik podaje błędny login/hasło (Basic) lub token (Bearer).
    - **Obsługa**:
-     - Serwer zwraca odpowiedź **401 Unauthorized** z komunikatem:
+     - Dla autoryzacji Basiec serwer zwraca odpowiedź **401 Unauthorized** z komunikatem:
        ```json
        {
-         "error": "Invalid credentials or token."
+         "error": "Invalid credentials"
        }
        ```
-
+    - Dla autoryzacji Bearer serwer zwraca odpowiedź **401 Unauthorized** z komunikatem:
+       ```json
+       {
+         "error": "Authorization failed: Invalid token. Please log in again."
+       }
+       ```
 ---
 
 6. **Próba dostępu do zasobu spoza zamontowanego katalogu**
    - **Sytuacja błędna**: Użytkownik próbuje uzyskać dostęp do zasobów spoza zamontowanego katalogu (np. przez `../` w ścieżce URL).
    - **Obsługa**:
-     - Serwer blokuje dostęp i zwraca **403 Forbidden**:
-       ```json
-       {
-         "error": "Access to the requested resource is forbidden."
-       }
-       ```
+     - Serwer zwraca informację z endpointu "/"
 
 ---
 
 7. **Nieobsługiwana metoda HTTP**
    - **Sytuacja błędna**: Użytkownik wysyła żądanie z metodą HTTP, która nie jest obsługiwana przez serwer (np. **PATCH**).
    - **Obsługa**:
-     - Serwer zwraca odpowiedź **405 Method Not Allowed** z listą dozwolonych metod:
+     - Serwer zwraca odpowiedź **405 Method Not Allowed** z informacją na temat użytej metodty HTTP:
        ```json
        {
-         "error": "HTTP method not allowed. Allowed methods: GET, POST, DELETE."
+         "error": "Method PATCH not allowed for path: / without host"
        }
        ```
 
@@ -285,10 +285,10 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 8. **Błędny format danych w żądaniu POST**
    - **Sytuacja błędna**: Użytkownik wysyła żądanie **POST** z niepoprawnym lub niekompletnym formatem danych (np. błędny JSON).
    - **Obsługa**:
-     - Serwer zwraca **400 Bad Request** z komunikatem:
+     - Serwer zwraca **400 Bad Request** z komunikatem o błędzie w przesyłanym pliku:
        ```json
        {
-         "error": "Invalid request payload. Please check the data format."
+         "error": "Invalid JSON in request body: Expecting ':' delimiter: line 1 column 26 (char 25)"
        }
        ```
 
@@ -301,7 +301,7 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
      - Użytkownik otrzymuje odpowiedź **500 Internal Server Error**:
        ```json
        {
-         "error": "An internal server error occurred. Please try again later."
+         "error": "An unexpected error occurred."
        }
        ```
 
