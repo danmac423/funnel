@@ -52,11 +52,13 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
    - Serwer zwraca standardowe kody statusu HTTP:
      - **200 OK**: Poprawna odpowiedź,
      - **201 Created**: Utworzono nowy zasób (POST),
+     - **206 Partial Content**: Częściowa treść, 
      - **400 Bad Request**: Niepoprawne żądanie,
      - **401 Unauthorized**: Brak autoryzacji,
      - **403 Forbidden**: Błędne dane autoryzacyjne,
      - **404 Not Found**: Zasób nie istnieje,
      - **405 Method Not Allowed**: Nieobsługiwana metoda HTTP,
+     - **416 Range Not Satisfiable**: Żądany zakres niemożliwy do spełnienia,
      - **500 Internal Server Error**: Wewnętrzny błąd serwera.
 
 8. **Dynamiczna obsługa żądań POST**
@@ -197,6 +199,15 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 
 ---
 
+10. **Obsługa nagłówka Range**
+   - **Scenariusz**: Użytkownik wysyła żądanie **GET** z nagłówkiem **Range** podając żądany zakres.
+   - **Opis działania**:
+     - Serwer sprawdza poprawność zakresu.
+     - W przypadku błędnego zakresu zwraca **416 Range Not Satisfiable**.
+   - **Rezultat**: Klient otrzymuje żądany zakres zasobu.
+
+--- 
+
 ## **Analiza i obsługa błędnych sytuacji**
 
 1. **Brak lub niepoprawna konfiguracja serwera**
@@ -294,7 +305,19 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 
 ---
 
-9. **Błąd serwera (500)**
+9. **Błędny zakres w nagłówku Range**
+   - **Sytuacja błędna**: Użytkownik wysyła żądanie **GET** z niepoprawnym zakresem bajtów w nagłówku **Range**.
+   - **Obsługa**:
+     - Serwer zwraca **416 Range Not Satisfiable** z komunikatem:
+       ```json
+       {
+         "error": "Invalid bytes range"
+       }
+       ```
+
+---
+
+10. **Błąd serwera (500)**
    - **Sytuacja błędna**: Wewnętrzny błąd serwera spowodowany np. wyjątkiem w kodzie.
    - **Obsługa**:
      - Serwer loguje szczegóły błędu do pliku logów.
@@ -307,7 +330,7 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 
 ---
 
-10. **Przekroczenie liczby jednoczesnych połączeń**
+11. **Przekroczenie liczby jednoczesnych połączeń**
    - **Sytuacja błędna**: Liczba jednoczesnych połączeń przekracza limit (10).
    - **Obsługa**:
      - Nowe żądanie jest odrzucane z odpowiedzią **503 Service Unavailable**:
