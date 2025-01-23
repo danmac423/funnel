@@ -297,7 +297,7 @@ def test_out_of_bounds_range():
             raise RuntimeError("Server did not start in time.")
 
         # Check response
-        assert response.status_code == 400
+        assert response.status_code == 416
         assert "Invalid byte range." in response.json()["error"]
 
     finally:
@@ -328,7 +328,7 @@ def test_invalid_range():
             raise RuntimeError("Server did not start in time.")
 
         # Check response
-        assert response.status_code == 400
+        assert response.status_code == 416
         assert "Invalid byte range." in response.json()["error"]
 
     finally:

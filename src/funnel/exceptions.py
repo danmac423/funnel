@@ -119,3 +119,13 @@ class MethodNotAllowedError(FunnelError):
     status_code = 405
     error_reason = "Method Not Allowed"
     error_message = "Method not allowed for this resource"
+
+
+class RangeNotSatisfiable(FunnelError):
+    """
+    Exception for method not allowed errors
+    """
+
+    status_code = 416
+    error_reason = "Range Not Satisfiable"
+    error_message = "Requested range not satisfiable"
