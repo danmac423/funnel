@@ -11,7 +11,12 @@ from typing import Callable
 
 import yaml
 
-from funnel.exceptions import BadRequestError, MethodNotAllowedError, NotFoundError
+from funnel.exceptions import (
+    BadRequestError,
+    MethodNotAllowedError,
+    NotFoundError,
+    RangeNotSatisfiable,
+)
 from funnel.request import Request
 from funnel.response import Response
 from funnel.router import Router
@@ -280,6 +285,8 @@ def serve_file(file_path: str, request: Request) -> Response:
         return Response(status_code=200, reason="OK", headers=headers, body=content)
     except FileNotFoundError:
         raise NotFoundError(f"File not found: {file_path}")
+    except RangeNotSatisfiable as e:
+        raise RangeNotSatisfiable(str(e))
     except Exception as e:
         raise BadRequestError(f"Error reading file: {e}")
 
@@ -311,7 +318,7 @@ def parse_range_header(range_header: str, file_size: int) -> tuple[int, int]:
     end = int(end) if end else file_size - 1
 
     if start >= file_size or start > end:
-        raise BadRequestError("Invalid byte range.")
+        raise RangeNotSatisfiable("Invalid byte range.")
     return start, min(end, file_size - 1)
 
 

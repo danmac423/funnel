@@ -3,7 +3,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from funnel.exceptions import BadRequestError, MethodNotAllowedError, NotFoundError
+from funnel.exceptions import (
+    BadRequestError,
+    MethodNotAllowedError,
+    NotFoundError,
+    RangeNotSatisfiable,
+)
 from funnel.request import Request
 from funnel.router import Router
 from funnel.utils import (
@@ -358,7 +363,7 @@ def test_serve_file_with_range_invalid_range(tmp_path):
     request = MagicMock()
     request.headers = {"Range": "bytes=50-60"}
 
-    with pytest.raises(BadRequestError, match="Invalid byte range."):
+    with pytest.raises(RangeNotSatisfiable, match="Invalid byte range."):
         serve_file(str(file_path), request)
 
 
