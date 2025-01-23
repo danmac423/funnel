@@ -1,8 +1,8 @@
 host: "127.0.0.1"
 port: 8080
-max_workers: 10
+max_workers: 100
 mounted_directories:
   - path: "/static"
-    directory: "."
+    directory: "./src"
   - path: "/project"
-    directory: "/"
+    directory: "."

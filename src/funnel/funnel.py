@@ -31,7 +31,6 @@ class HTTPServer:
         executor (ThreadPoolExecutor): Executor for handling requests.
         _running (threading.Event): Event to control server running state.
         _server_socket (socket.socket | None): Server socket for accepting connections.
-        _mounted_directories (list[dict]): List of mounted directories
     """
 
     def __init__(self, config_path: str):

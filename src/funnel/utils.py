@@ -319,7 +319,7 @@ def parse_range_header(range_header: str, file_size: int) -> tuple[int, int]:
 
     if start >= file_size or start > end:
         raise RangeNotSatisfiable("Invalid byte range.")
-    return start, min(end, file_size - 1)
+    return start, end
 
 
 def read_file_range(file_path: str, start: int, end: int) -> bytes:
