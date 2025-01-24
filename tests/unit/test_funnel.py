@@ -98,7 +98,6 @@ def test_handle_request(server, mocker):
 
     server._handle_request(mock_socket)
 
-    # Sprawdzenie, czy handler został wywołany z rzeczywistym obiektem Request
     handler.assert_called_once()
     request = handler.call_args[0][0]
 
@@ -173,18 +172,14 @@ def test_handle_request_unexpected_error(server, mocker, caplog):
     """
     caplog.set_level(logging.CRITICAL)
 
-    # Przygotowanie socketu symulującego żądanie
     mock_socket = MagicMock()
     mock_socket.recv.return_value = b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
     mock_socket.getpeername.return_value = ("127.0.0.1", 12345)
 
-    # Symulacja wyjątku w routerze
     mocker.patch.object(server.router, "get_handler", side_effect=Exception("Unexpected error"))
 
-    # Wywołanie funkcji handle_request
     server._handle_request(mock_socket)
 
-    # Sprawdzenie, czy wysłana została odpowiedź 500
     mock_socket.sendall.assert_called_once()
     sent_data = mock_socket.sendall.call_args[0][0]
     expected_response = (
@@ -195,10 +190,8 @@ def test_handle_request_unexpected_error(server, mocker, caplog):
     )
     assert sent_data == expected_response
 
-    # Sprawdzenie, czy socket został zamknięty
     mock_socket.close.assert_called_once()
 
-    # Sprawdzenie logów
     assert "Unexpected error occurred: Unexpected error" in caplog.text
 
 

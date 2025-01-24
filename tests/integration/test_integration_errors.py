@@ -254,7 +254,6 @@ def test_invalid_range_format():
     try:
         for _ in range(10):
             try:
-                # Invalid Range format
                 response = requests.get(
                     "http://127.0.0.1:8080/project/tests/integration/test_file.txt",
                     headers={"Range": "bytes=abc-def"},
@@ -265,7 +264,6 @@ def test_invalid_range_format():
         else:
             raise RuntimeError("Server did not start in time.")
 
-        # Check response
         assert response.status_code == 400
         assert "Invalid Range header format" in response.json()["error"]
 
@@ -285,7 +283,6 @@ def test_out_of_bounds_range():
     try:
         for _ in range(10):
             try:
-                # Out-of-bounds range
                 response = requests.get(
                     "http://127.0.0.1:8080/project/tests/integration/test_file.txt",
                     headers={"Range": "bytes=100-200"},
@@ -296,7 +293,6 @@ def test_out_of_bounds_range():
         else:
             raise RuntimeError("Server did not start in time.")
 
-        # Check response
         assert response.status_code == 416
         assert "Invalid byte range." in response.json()["error"]
 
@@ -316,7 +312,6 @@ def test_invalid_range():
     try:
         for _ in range(10):
             try:
-                # Range request on an empty file
                 response = requests.get(
                     "http://127.0.0.1:8080/project/tests/integration/test_file.txt",
                     headers={"Range": "bytes=10-5"},
@@ -327,7 +322,6 @@ def test_invalid_range():
         else:
             raise RuntimeError("Server did not start in time.")
 
-        # Check response
         assert response.status_code == 416
         assert "Invalid byte range." in response.json()["error"]
 
