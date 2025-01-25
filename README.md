@@ -347,16 +347,16 @@ Celem zadania jest implementacja serwera HTTP, który będzie posiadał następu
 Projekt znajduję się na repozytorium https://gitlab-stud.elka.pw.edu.pl/npieczko/funnel.git. Jest instalowalny za pomocą managera pakietów *uv*.
 
 ```
-$ git clone https://gitlab-stud.elka.pw.edu.pl/npieczko/funnel.git
-$ cd funnel
-$ uv sync
-$ uv pip install -e .
+git clone https://gitlab-stud.elka.pw.edu.pl/npieczko/funnel.git
+cd funnel
+make uv
+source .venv/bin/activate
 ```
 
 Nasza biblioteka umożliwia dodawanie tras (route) przez dektorator. Aby uruchomić przykładowy serwer HTTP należy wywołać komendę:
 
 ```
-$ python3 examples/main.py
+make run_server
 ```
 
 ---
@@ -817,12 +817,13 @@ Przykładowy plik konfiguracyjny
 ```yaml
 host: "127.0.0.1"
 port: 8080
-max_workers: 10
+max_workers: 100
+max_content_length: 16777216 # 16MB
 mounted_directories:
   - path: "/static"
-    directory: "."
+    directory: "./src"
   - path: "/project"
-    directory: "/"
+    directory: "."
 ```
 
 Logi mają postać:
