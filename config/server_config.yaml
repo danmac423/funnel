@@ -1,6 +1,7 @@
 host: "127.0.0.1"
 port: 8080
 max_workers: 100
+max_content_length: 16777216
 mounted_directories:
   - path: "/static"
     directory: "./src"
