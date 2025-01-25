@@ -140,6 +140,27 @@ def test_handle_request_large_body(server):
     mock_socket.close.assert_called_once()
 
 
+def test_handle_request_content_length_exceeds_max(server):
+    server.max_content_length = 100
+
+    headers = b"POST /upload HTTP/1.1\r\nHost: localhost\r\nContent-Length: 200\r\n\r\n\r\n"
+
+    mock_socket = MagicMock()
+    mock_socket.recv.return_value = headers
+    mock_socket.getpeername.return_value = ("localhost", 12345)
+
+    server._handle_request(mock_socket)
+
+    sent_data = mock_socket.sendall.call_args[0][0]
+    assert sent_data.startswith(b"HTTP/1.1 400 Bad Request"), "Oczekiwano błędu 400 Bad Request"
+
+    response_body = sent_data.split(b"\r\n\r\n", 1)[1].decode("utf-8")
+    expected_message = "Content-Length exceeds maximum allowed size: 200"
+    assert expected_message in response_body, "Brak oczekiwanej wiadomości o błędzie"
+
+    mock_socket.close.assert_called_once()
+
+
 def test_handle_request_empty_request(server):
     mock_socket = MagicMock()
     mock_socket.recv.return_value = b"    "

@@ -38,6 +38,7 @@ class HTTPServer:
 
         self.host = config.get("host", "127.0.0.1")
         self.port = config.get("port", 8080)
+        self.max_content_length = config.get("max_content_length", 1024 * 1024)
 
         self.router = Router()
         self.executor = ThreadPoolExecutor(max_workers=config.get("max_workers", 10))
@@ -128,6 +129,12 @@ class HTTPServer:
             headers_dict = self._parse_headers(headers_str)
 
             content_length = int(headers_dict.get("Content-Length", 0))
+
+            if content_length > self.max_content_length:
+                raise BadRequestError(
+                    f"Content-Length exceeds maximum allowed size: {content_length}"
+                )
+
             body = self._receive_body(client_socket, body_start, content_length)
 
             request = Request((headers + b"\r\n\r\n" + body).decode("utf-8"))
