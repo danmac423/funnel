@@ -1,0 +1,37 @@
+curl localhost:8080/login -H "Content-Type: application/json" -d '{"username": "john_doe", "password": "admin123"}'
+curl localhost:8080/protected_bearer -H "Authorization: Bearer TOKEN"
+
+curl localhost:8080/protected_basic -H "Authorization: Basic $(echo -n "john_doe:admin123" | base64)"
+
+curl -X POST "localhost:8080/project/?filename=file.json" -H "Content-Type: application/json" -d '{"test": "datta", "dile": "file"}'
+curl -X DELETE localhost:8080/project/file.json
+
+curl -X GET localhost:8080/ -H "Content-Type: application/json" -H "Host: example.com"
+curl -X GET localhost:8080/ -H "Content-Type: application/json" -H "Host: example.coms" -> przekierowanie
+
+
+Range
+curl -X GET -H "Range: bytes=40-70" http://localhost:8080/project/examples/main.py
+
+routing: curl -X GET localhost:8080/about
+
+Błędy
+curl -X PATCH localhost:8080/ -H "Content-Type: application/json" -> {"error": "Method PATCH not allowed for path: / without host", "status_code": 405}
+curl -X DELETE localhost:8080/project/file.json -> {"error": "File not found.", "status_code": 404}
+
+curl localhost:8080/protected_basic -> {"error": "BadRequestError: Missing or invalid Auth header", "status_code": 400}
+curl localhost:8080/protected_bearer -H "Authorization: Bearer 123" -> "Authorization failed: Invalid token. Please log in again."
+curl localhost:8080/login -H "Content-Type: application/json" -d '{"username": "john_does", "password": "admin1234"}' -> {"error": "Invalid credentials"}
+curl -X GET localhost:8080/project/../../ -> przekierowanie do /
+
+curl -X POST "localhost:8080/project/?filename=file.json" -H "Content-Type: application/json" -d '{"test": "datta", "dile" "file"}' -> {"error": "Invalid JSON in request body: Expecting ':' delimiter: line 1 column 26 (char 25)", "status_code": 400}
+
+curl -X GET localhost:8080/internal_error -> {"error": "An unexpected error occurred.", "status_code": 500, "details": "Internal error"}
+
+Przy braku endpointu /
+curl -X GET localhost:8080/ -H "Content-Type: application/json" -H "Host: example.coms" -> {"error": "No route found for path: /", "status_code": 404}
+curl -X GET localhost:8080/project/../ -> {"error": "No route found for path: /", "status_code": 404}
+
+curl -X GET -H "Range: bytes=50-6" http://localhost:8080/project/examples/main.py -> {"error": "Invalid bytes range", "status_code": 416}
+
+

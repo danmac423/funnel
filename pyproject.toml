@@ -1,0 +1,26 @@
+[project]
+name = "funnel"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = ["mypy", "pytest", "ruff", "setuptools", "pyjwt", "pytest-cov", "python-dotenv", "pytest-mock", "pyaml", "types-PyYAML", "requests", "types-requests"]
+
+
+[tool.ruff]
+line-length = 99
+
+[tool.ruff.lint]
+extend-select = ["E501"]
+select = ["F", "I"]
+
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+addopts = "--cov=src --cov-report=term-missing"
+
+
+[tool.mypy]
+ignore_missing_imports = true
+check_untyped_defs = true
+

@@ -1,0 +1,469 @@
+import base64
+import multiprocessing
+import os
+import time
+
+import requests
+from test_integration import run_server
+
+TEST_PATH = "./tests/integration/"
+
+
+def test_get_missing_directory():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.get("http://127.0.0.1:8080/project/tests/missing/")
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 404
+
+    finally:
+        process.terminate()
+
+
+def test_get_missing_file():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.get("http://127.0.0.1:8080/project/tests/missing.jpg")
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 404
+
+    finally:
+        process.terminate()
+
+
+def test_invalid_host():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.get("http://127.0.0.1:8080/", headers={"host": "invalid.coms"})
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 400
+    finally:
+        process.terminate()
+
+
+def test_authorization_bearer_invalid_token():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.get(
+                    "http://127.0.0.1:8080/protected_bearer",
+                    headers={"Authorization": "Bearer token"},
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 401
+    finally:
+        process.terminate()
+
+
+def test_authorization_bearer_no_token():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.get(
+                    "http://127.0.0.1:8080/protected_bearer",
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 400
+    finally:
+        process.terminate()
+
+
+def test_authorization_basic_wrong_creds():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    login = "wronglogin"
+    password = "wrongpass"
+    try:
+        for _ in range(10):
+            try:
+                credentials = f"{login}:{password}"
+                encoded_credentials = base64.b64encode(credentials.encode()).decode()
+                header = {"Authorization": f"Basic {encoded_credentials}"}
+                response = requests.get(
+                    "http://127.0.0.1:8080/protected_basic",
+                    headers=header,
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 401
+    finally:
+        process.terminate()
+
+
+def test_authorization_basic_no_creds():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.get(
+                    "http://127.0.0.1:8080/protected_basic",
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 400
+    finally:
+        process.terminate()
+
+
+def test_back_to_home_page():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.get("http://127.0.0.1:8080/project/../")
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+        assert response.status_code == 200
+        assert response.headers["Content-Type"] == "text/html"
+        assert "<h1>Welcome to the Home Page!</h1>" in response.text
+
+    finally:
+        process.terminate()
+
+
+def test_method_not_allowed_request():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.patch("http://127.0.0.1:8080/hello")
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+        assert response.status_code == 405
+    finally:
+        process.terminate()
+
+
+def test_handle_data_post_invalid_json():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        for _ in range(10):
+            try:
+                payload = '{"key" "value"}'
+                response = requests.post(
+                    "http://127.0.0.1:8080/data",
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 400
+    finally:
+        process.terminate()
+
+
+def test_internal_error():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.get(
+                    "http://127.0.0.1:8080/internal_error",
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 500
+    finally:
+        process.terminate()
+
+
+def test_invalid_range_format():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    file_path = os.path.join("tests/integration/", "test_file.txt")
+    with open(file_path, "w") as f:
+        f.write("This is a test file for Range header support.")
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.get(
+                    "http://127.0.0.1:8080/project/tests/integration/test_file.txt",
+                    headers={"Range": "bytes=abc-def"},
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 400
+        assert "Invalid Range header format" in response.json()["error"]
+
+    finally:
+        process.terminate()
+        os.remove(file_path)
+
+
+def test_out_of_bounds_range():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    file_path = os.path.join("tests/integration/", "test_file.txt")
+    with open(file_path, "w") as f:
+        f.write("This is a test file for Range header support.")
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.get(
+                    "http://127.0.0.1:8080/project/tests/integration/test_file.txt",
+                    headers={"Range": "bytes=100-200"},
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 416
+        assert "Invalid byte range." in response.json()["error"]
+
+    finally:
+        process.terminate()
+        os.remove(file_path)
+
+
+def test_invalid_range():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    file_path = os.path.join("tests/integration/", "test_file.txt")
+    with open(file_path, "w") as f:
+        f.write("This is a test file for Range header support.")
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.get(
+                    "http://127.0.0.1:8080/project/tests/integration/test_file.txt",
+                    headers={"Range": "bytes=10-5"},
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 416
+        assert "Invalid byte range." in response.json()["error"]
+
+    finally:
+        process.terminate()
+        os.remove(file_path)
+
+
+def test_delete_file_not_found():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.delete(
+                    "http://127.0.0.1:8080/project/tests/integration/test_file.txt",
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 404
+        assert "File not found" in response.json()["error"]
+
+    finally:
+        process.terminate()
+
+
+def test_delete_wrong_path():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    file_path = os.path.join("../", "test_file.txt")
+    with open(file_path, "w") as f:
+        f.write("This is a test file for not found deletion.")
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.delete(
+                    "http://127.0.0.1:8080/project/../test_file.txt",
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 404
+        assert "No route found for path: /test_file.txt" in response.json()["error"]
+
+    finally:
+        process.terminate()
+        os.remove(file_path)
+
+
+def test_add_file_bad_content_type():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    file_path = os.path.join("tests/integration/", "test_file.json")
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.post(
+                    "http://127.0.0.1:8080/project/tests/integration/?filename=test_file.json",
+                    headers={"Content-Type": "aaa"},
+                    json={"newfile": "name", "more": "info"},
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 400
+        assert "Only JSON files are allowed." in response.json()["error"]
+        assert os.path.isfile(os.getcwd() + os.path.sep + file_path) is False
+
+    finally:
+        process.terminate()
+
+
+def test_add_file_bad_file_name():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    file_path = os.path.join("tests/integration/", "test_file.json")
+
+    try:
+        for _ in range(10):
+            try:
+                response = requests.post(
+                    "http://127.0.0.1:8080/project/tests/integration/?filename=test_file.txt",
+                    headers={"Content-Type": "application/json"},
+                    json={"newfile": "name", "more": "info"},
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 400
+        assert "Invalid filename. Must be a valid JSON filename." in response.json()["error"]
+        assert os.path.isfile(os.getcwd() + os.path.sep + file_path) is False
+
+    finally:
+        process.terminate()
+
+
+def test_add_file_invalid_json():
+    process = multiprocessing.Process(target=run_server)
+    process.start()
+
+    file_path = os.path.join("tests/integration/", "test_file.json")
+
+    try:
+        for _ in range(10):
+            payload = '{"key" "value"}'
+            try:
+                response = requests.post(
+                    "http://127.0.0.1:8080/project/tests/integration/?filename=test_file.txt",
+                    headers={"Content-Type": "application/json"},
+                    data=payload,
+                )
+                break
+            except requests.ConnectionError:
+                time.sleep(0.5)
+        else:
+            raise RuntimeError("Server did not start in time.")
+
+        assert response.status_code == 400
+        assert (
+            "Invalid JSON in request body: Expecting ':' delimiter: line 1 column 8 (char 7)"
+            in response.json()["error"]
+        )
+        assert os.path.isfile(os.getcwd() + os.path.sep + file_path) is False
+
+    finally:
+        process.terminate()

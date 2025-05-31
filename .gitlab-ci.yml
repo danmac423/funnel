@@ -1,0 +1,56 @@
+stages:
+  - lint
+  - test
+
+
+# Lint stage with mypy
+ruff-lint:
+  stage: lint
+  image: python:3.13
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install uv
+    - uv sync
+    - source .venv/bin/activate
+  script:
+    - ruff check .
+  rules:
+    - changes:
+        - "**/*.py"
+        - "pyproject.toml"
+        - ".gitlab-ci.yml"
+
+
+# Lint stage with mypy
+mypy-type-check:
+  stage: lint
+  image: python:3.13
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install uv
+    - uv sync
+    - source .venv/bin/activate
+  script:
+    - mypy . --ignore-missing-imports --check-untyped-defs
+  rules:
+    - changes:
+        - "**/*.py"
+        - "pyproject.toml"
+        - ".gitlab-ci.yml"
+
+# Test stage with pytest
+pytest-tests:
+  stage: test
+  image: python:3.13
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install uv
+    - uv sync
+    - source .venv/bin/activate
+  script:
+    - pytest --maxfail=1 --disable-warnings
+  rules:
+    - changes:
+        - "**/*.py"
+        - "pyproject.toml"
+        - ".gitlab-ci.yml"
