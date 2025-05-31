@@ -1,841 +1,136 @@
-# **PSI 2024Z - Funnel**
+# **Funnel: A Lightweight, Flask-Inspired HTTP Server in Python**
+
+[![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/release/python-3130/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Welcome to **Funnel**, a custom-built HTTP server implemented from the ground up in Python. Inspired by the simplicity and elegance of frameworks like Flask, Funnel provides a robust foundation for building web services with minimal dependencies. It features a clean, decorator-based syntax for routing and authentication, making it incredibly intuitive to define endpoints and secure your application.
+
+This project was developed as an academic endeavor to explore the inner workings of HTTP, network communication, and server architecture.
 
 ---
 
-## **Zadanie**
-Celem zadania jest implementacja serwera HTTP, który będzie posiadał następujące funkcjonalności:
+## **🌟 Key Features**
 
-- Konfiguracja za pomocą pliku konfiguracyjnego (np. YAML lub TOML).
-- Możliwość zamontowania wybranego katalogu pod zadaną ścieżką i nazwą hosta.
-- Obsługa nagłówka Host.
-- Obsługa nagłówka Authorization (Basic oraz Bearer).
-- Obsługa przynajmniej żądań GET, POST oraz DELETE.
-- Funkcjonalność widoku indeksu katalogu (GET /katalog powinien zwrócić odnośniki do plików i podkatalogów, poprawnie renderowane w przeglądarce).
-- Dla chętnych: obsługa nagłówka Range.
+Funnel is packed with features that provide a comprehensive and secure server experience:
 
----
-
-## **Założenia funkcjonalne**
-
-1. **Konfiguracja serwera**
-   - Serwer odczytuje konfigurację z pliku **YAML**.
-   - Plik konfiguracyjny zawiera:
-     - Host i port serwera,
-     - Mapowanie tras HTTP na katalogi lokalne,
-     - Reguły autoryzacji dla zasobów (**Basic** i **Bearer**).
-
-2. **Routing i montowanie katalogów**
-   - Serwer obsługuje mapowanie katalogów lokalnych na zadane trasy HTTP.
-   - Bezpieczeństwo montowanych katalogów:
-     - Serwer blokuje dostęp do zasobów poza zamontowanymi katalogami.
-
-3. **Obsługa metod HTTP**
-   - Serwer obsługuje metody:
-     - **GET**: Pobieranie zasobów i generowanie widoku katalogu.
-     - **POST**: Odbieranie danych JSON i zapisywanie plików na serwerze.
-     - **DELETE**: Usuwanie zasobów z zamontowanego katalogu.
-
-4. **Widok indeksu katalogu**
-   - Żądanie **GET** dla katalogu (np. `/static/`) generuje dynamiczną listę plików i podkatalogów w formacie HTML.
-
-5. **Obsługa autoryzacji**
-   - Możliwość zabezpieczenia wybranych tras za pomocą:
-     - **Basic Authorization**: Weryfikacja loginu i hasła.
-     - **Bearer Authorization**: Weryfikacja tokena dostępowego.
-   - Nieautoryzowane żądania zwracają **401 Unauthorized**.
-
-6. **Obsługa nagłówka Host**
-   - Serwer weryfikuje poprawność nagłówka **Host** i akceptuje żądania tylko dla dozwolonych wartości.
-   - Niepoprawny nagłówek skutkuje odpowiedzią **400 Bad Request**.
-
-7. **Obsługa kodów odpowiedzi HTTP**
-   - Serwer zwraca standardowe kody statusu HTTP:
-     - **200 OK**: Poprawna odpowiedź,
-     - **201 Created**: Utworzono nowy zasób (POST),
-     - **206 Partial Content**: Częściowa treść, 
-     - **400 Bad Request**: Niepoprawne żądanie,
-     - **401 Unauthorized**: Brak autoryzacji,
-     - **403 Forbidden**: Błędne dane autoryzacyjne,
-     - **404 Not Found**: Zasób nie istnieje,
-     - **405 Method Not Allowed**: Nieobsługiwana metoda HTTP,
-     - **416 Range Not Satisfiable**: Żądany zakres niemożliwy do spełnienia,
-     - **500 Internal Server Error**: Wewnętrzny błąd serwera.
-
-8. **Dynamiczna obsługa żądań POST**
-   - Żądania **POST** z danymi JSON umożliwiają:
-     - Tworzenie nowych plików w określonym katalogu,
-     - Zwracanie odpowiedzi **201 Created** po udanym zapisie.
-
-9. **Logowanie żądań**
-   - Serwer loguje informacje o żądaniach, w tym:
-     - Adres IP klienta,
-     - Metodę HTTP,
-     - Ścieżkę URL,
-     - Kod odpowiedzi HTTP,
-     - Czas odpowiedzi serwera.
-
-10. **Obsługa nagłówka Range (opcjonalnie)**
-    - Możliwość pobierania części pliku przy użyciu nagłówka **Range** (np. dla strumieniowania).
-
+-   **Declarative Routing:** Define routes effortlessly using a `@server.route()` decorator, similar to Flask.
+-   **Flexible Authentication:** Secure your endpoints with built-in **Basic** and **Bearer** authentication using a simple `@auth.authenticate()` decorator.
+-   **Configuration Driven:** All server settings, including host, port, and directory mappings, are managed through a clean `YAML` configuration file.
+-   **Full HTTP Method Support:** Handles `GET`, `POST`, and `DELETE` requests out-of-the-box.
+-   **Static File Serving:** Mount local directories to specific URL paths to serve static assets like images, CSS, and JavaScript.
+-   **Directory Indexing:** Automatically generates an HTML index view for directories, allowing users to browse file listings in their browser.
+-   **Robust Error Handling:** Returns standard HTTP status codes for all common scenarios (e.g., `404 Not Found`, `401 Unauthorized`, `500 Internal Server Error`).
+-   **Request Logging:** Keeps a detailed log of all incoming requests, including the client IP, HTTP method, URL path, status code, and response time.
+-   **Multithreaded Architecture:** Utilizes Python's `threading` module to handle up to 10 concurrent connections, ensuring responsiveness under load.
+-   **(Optional) Range Requests:** Supports the `Range` header for partial content delivery, ideal for streaming large files.
 
 ---
 
-## **Założenia niefunkcjonalne**
+## **🚀 Getting Started**
 
-1. **Wydajność**
-   - Serwer obsługuje do **10 jednoczesnych połączeń** w środowisku lokalnym.
-   - W celu realizacji obsługi wielu klientów serwer wykorzystuje **wielowątkowość** za pomocą modułu `threading`. Każde połączenie jest obsługiwane w osobnym wątku.
-   - Czas odpowiedzi dla podstawowych żądań (GET) nie przekracza **1 sekundy**.
+### **Prerequisites**
 
-2. **Przenośność**
-   - Serwer działa na systemach operacyjnych: **Linux**, **Windows** i **macOS**.
-   - Wykorzystuje standardowe biblioteki Pythona (wersja **3.13**).
+-   Python 3.13 or newer
+-   `uv` package manager
 
-3. **Bezpieczeństwo**
-   - Serwer blokuje dostęp do katalogów poza zdefiniowanymi trasami.
-   - Obsługa autoryzacji **Basic** i **Bearer** dla chronionych zasobów.
+### **Installation**
 
-4. **Konfiguracja**
-   - Wszystkie ustawienia serwera (host, port, mapowanie katalogów, autoryzacja) są definiowane w pliku **YAML**.
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/danmac423/funnel.git
+    cd funnel
+    ```
 
-5. **Testowalność**
-   - **Testy jednostkowe**: Sprawdzają poprawność kluczowych funkcji serwera (routing, autoryzacja, obsługa plików).
-   - **Testy integracyjne**: Obowiązkowe dla weryfikacji współdziałania wszystkich komponentów serwera.
+2.  **Set up the virtual environment and install dependencies:**
+    ```bash
+    make uv
+    source .venv/bin/activate
+    ```
 
-6. **Niezawodność**
-   - Serwer obsługuje sytuacje błędne (np. brak zasobu, błędna autoryzacja) i zwraca odpowiednie kody HTTP.
-   - Błędy są logowane w pliku **logs/**.
-
-7. **Utrzymywalność**
-   - Kod jest zgodny ze standardami **PEP8** i zawiera dokumentację użytkową.
+3.  **Run the example server:**
+    ```bash
+    make run_server
+    ```
+    The server will start on `127.0.0.1:8080` by default.
 
 ---
 
-## **Przypadki użycia**
+## **💡 Usage**
 
-1. **Uruchomienie serwera HTTP z konfiguracją**
-   - **Scenariusz**: Administrator uruchamia serwer, podając ścieżkę do pliku konfiguracyjnego YAML.
-   - **Opis działania**:
-     - Biblioteka odczytuje konfigurację zawierającą host, port, mapowanie katalogów i reguły autoryzacji.
-     - Serwer startuje na zdefiniowanym hoście i porcie.
-   - **Rezultat**: Serwer jest gotowy do obsługi żądań.
+Funnel makes it incredibly simple to create and manage your server.
 
----
+### **Defining Routes**
 
-2. **Dostęp do statycznych plików**
-   - **Scenariusz**: Użytkownik wysyła żądanie **GET** na ścieżkę `/static/file.txt`.
-   - **Opis działania**:
-     - Serwer sprawdza konfigurację i mapuje trasę `/static` na lokalny katalog (np. `/var/www/static`).
-     - Serwer odszukuje plik `file.txt` i zwraca go klientowi z kodem **200 OK**.
-   - **Rezultat**: Plik jest poprawnie zwracany klientowi.
-
----
-
-3. **Widok indeksu katalogu**
-   - **Scenariusz**: Użytkownik wysyła żądanie **GET** na ścieżkę katalogu `/static/`.
-   - **Opis działania**:
-     - Serwer generuje dynamiczny widok HTML zawierający listę plików i podkatalogów.
-     - Każdy plik jest wyświetlany jako odnośnik.
-   - **Rezultat**: Klient otrzymuje stronę HTML z widokiem katalogu.
-
----
-
-4. **Dostęp do zasobów chronionych (autoryzacja Basic)**
-   - **Scenariusz**: Użytkownik próbuje uzyskać dostęp do zasobu chronionego (np. `/protected/data`).
-   - **Opis działania**:
-     - Serwer sprawdza nagłówek **Authorization**:
-       - Jeśli dane (login i hasło) są poprawne → odpowiedź **200 OK**.
-       - Jeśli dane są niepoprawne → odpowiedź **401 Unauthorized**.
-       - Jeśli brak nagłówka **Authorization** → odpowiedź **400 Bad Request**.
-   - **Rezultat**: Użytkownik otrzymuje zasób lub komunikat o błędzie.
-
----
-
-5. **Dostęp do zasobów chronionych (autoryzacja Bearer)**
-   - **Scenariusz**: Użytkownik próbuje uzyskać dostęp do zasobu chronionego tokenem Bearer (np. `/api/data`).
-   - **Opis działania**:
-     - Serwer weryfikuje token Bearer w nagłówku **Authorization**.
-       - Jeśli token jest poprawny → odpowiedź **200 OK**.
-       - Jeśli token jest błędny → odpowiedź **401 Unauthorized**.
-       - Jeśli brak tokena → odpowiedź **400 Bad Request**.
-   - **Rezultat**: Użytkownik otrzymuje zasób lub komunikat o błędzie.
-
----
-
-6. **Przesyłanie danych na serwer (POST)**
-   - **Scenariusz**: Użytkownik wysyła żądanie **POST** na trasę `/upload` z danymi JSON.
-   - **Opis działania**:
-     - Serwer odbiera dane, weryfikuje ich poprawność i zapisuje je jako plik na serwerze.
-     - Serwer zwraca odpowiedź **201 Created**.
-   - **Rezultat**: Dane są zapisane na serwerze, a użytkownik otrzymuje potwierdzenie.
-
----
-
-7. **Usuwanie zasobów z serwera (DELETE)**
-   - **Scenariusz**: Użytkownik wysyła żądanie **DELETE** na ścieżkę `/static/file.txt`.
-   - **Opis działania**:
-     - Serwer sprawdza, czy plik istnieje w zamontowanym katalogu.
-     - Jeśli plik istnieje → serwer usuwa plik i zwraca **200 OK**.
-     - Jeśli plik nie istnieje → serwer zwraca **404 Not Found**.
-   - **Rezultat**: Plik jest usunięty lub klient otrzymuje komunikat o błędzie.
-
----
-
-8. **Błąd nagłówka Host**
-   - **Scenariusz**: Użytkownik wysyła żądanie z niepoprawnym nagłówkiem **Host**.
-   - **Opis działania**:
-     - Serwer sprawdza nagłówek **Host** zgodnie z konfiguracją.
-     - Jeśli nagłówek nie jest zgodny → serwer zwraca **400 Bad Request**.
-   - **Rezultat**: Żądanie jest odrzucone.
-
----
-
-9. **Obsługa nieznanej metody HTTP**
-   - **Scenariusz**: Użytkownik wysyła żądanie z nieobsługiwaną metodą HTTP (np. **PATCH**).
-   - **Opis działania**:
-     - Serwer sprawdza metodę HTTP.
-     - W przypadku nieobsługiwanej metody zwraca **405 Method Not Allowed**.
-   - **Rezultat**: Klient otrzymuje komunikat o błędnej metodzie.
-
----
-
-10. **Obsługa nagłówka Range**
-   - **Scenariusz**: Użytkownik wysyła żądanie **GET** z nagłówkiem **Range** podając żądany zakres.
-   - **Opis działania**:
-     - Serwer sprawdza poprawność zakresu.
-     - W przypadku błędnego zakresu zwraca **416 Range Not Satisfiable**.
-   - **Rezultat**: Klient otrzymuje żądany zakres zasobu.
-
---- 
-
-## **Analiza i obsługa błędnych sytuacji**
-
-1. **Brak lub niepoprawna konfiguracja serwera**
-   - **Sytuacja błędna**: Plik konfiguracyjny YAML jest nieprawidłowy lub brakuje wymaganych parametrów (np. host, port, ścieżki).
-   - **Obsługa**:
-     - Serwer ustawia wartości domyślne tych pól (host: "127.0.0.1", port: 8080)
-     - W przypadku braku pliku konfiguracyjnego (niepoprawna ścieżka) serwer zwraca wiadomość:
-      ```
-      FileNotFoundError: Configuration file not found: ./config/a/server_config.yaml
-       ```
-
----
-
-2. **Żądanie zasobu, który nie istnieje**
-   - **Sytuacja błędna**: Użytkownik wysyła żądanie **GET** lub **DELETE** dla pliku lub katalogu, który nie istnieje.
-   - **Obsługa**:
-     - Serwer zwraca odpowiedź **404 Not Found** z komunikatem:
-       ```json
-       {
-         "error": "File not found."
-       }
-       ```
-
----
-
-3. **Niepoprawny nagłówek Host**
-   - **Sytuacja błędna**: Użytkownik wysyła żądanie z niepoprawnym nagłówkiem **Host**.
-   - **Obsługa**:
-     - Serwer weryfikuje nagłówek **Host** i zwraca zawartość z endpointu "/". W przypadku gdy endpoint taki nie istnieje zwracany jest błąd 404 z informacją:
-       ```json
-       {
-         "error": "No route found for path: /"
-       }
-       ```
-
----
-
-4. **Brak autoryzacji dla zasobu chronionego**
-   - **Sytuacja błędna**: Użytkownik próbuje uzyskać dostęp do zasobu chronionego bez nagłówka **Authorization**.
-   - **Obsługa**:
-     - Serwer zwraca odpowiedź **400 Bad Request** z komunikatem:
-       ```json
-       {
-         "error": "BadRequestError: Missing or invalid Auth header"
-       }
-       ```
-
----
-
-5. **Niepoprawne dane autoryzacyjne**
-   - **Sytuacja błędna**: Użytkownik podaje błędny login/hasło (Basic) lub token (Bearer).
-   - **Obsługa**:
-     - Dla autoryzacji Basiec serwer zwraca odpowiedź **401 Unauthorized** z komunikatem:
-       ```json
-       {
-         "error": "Invalid credentials"
-       }
-       ```
-    - Dla autoryzacji Bearer serwer zwraca odpowiedź **401 Unauthorized** z komunikatem:
-       ```json
-       {
-         "error": "Authorization failed: Invalid token. Please log in again."
-       }
-       ```
----
-
-6. **Próba dostępu do zasobu spoza zamontowanego katalogu**
-   - **Sytuacja błędna**: Użytkownik próbuje uzyskać dostęp do zasobów spoza zamontowanego katalogu (np. przez `../` w ścieżce URL).
-   - **Obsługa**:
-     - Serwer zwraca informację z endpointu "/"
-
----
-
-7. **Nieobsługiwana metoda HTTP**
-   - **Sytuacja błędna**: Użytkownik wysyła żądanie z metodą HTTP, która nie jest obsługiwana przez serwer (np. **PATCH**).
-   - **Obsługa**:
-     - Serwer zwraca odpowiedź **405 Method Not Allowed** z informacją na temat użytej metodty HTTP:
-       ```json
-       {
-         "error": "Method PATCH not allowed for path: / without host"
-       }
-       ```
-
----
-
-8. **Błędny format danych w żądaniu POST**
-   - **Sytuacja błędna**: Użytkownik wysyła żądanie **POST** z niepoprawnym lub niekompletnym formatem danych (np. błędny JSON).
-   - **Obsługa**:
-     - Serwer zwraca **400 Bad Request** z komunikatem o błędzie w przesyłanym pliku:
-       ```json
-       {
-         "error": "Invalid JSON in request body: Expecting ':' delimiter: line 1 column 26 (char 25)"
-       }
-       ```
-
----
-
-9. **Błędny zakres w nagłówku Range**
-   - **Sytuacja błędna**: Użytkownik wysyła żądanie **GET** z niepoprawnym zakresem bajtów w nagłówku **Range**.
-   - **Obsługa**:
-     - Serwer zwraca **416 Range Not Satisfiable** z komunikatem:
-       ```json
-       {
-         "error": "Invalid bytes range"
-       }
-       ```
-
----
-
-10. **Błąd serwera (500)**
-   - **Sytuacja błędna**: Wewnętrzny błąd serwera spowodowany np. wyjątkiem w kodzie.
-   - **Obsługa**:
-     - Serwer loguje szczegóły błędu do pliku logów.
-     - Użytkownik otrzymuje odpowiedź **500 Internal Server Error**:
-       ```json
-       {
-         "error": "An unexpected error occurred."
-       }
-       ```
-
----
-
-11. **Przekroczenie liczby jednoczesnych połączeń**
-   - **Sytuacja błędna**: Liczba jednoczesnych połączeń przekracza limit (10).
-   - **Obsługa**:
-     - Nowe żądanie jest odrzucane z odpowiedzią **503 Service Unavailable**:
-       ```json
-       {
-         "error": "The server is currently overloaded. Please try again later."
-       }
-       ```
-
----
-
-## **Instrukcja uruchomienia**
-
-Projekt znajduję się na repozytorium https://gitlab-stud.elka.pw.edu.pl/npieczko/funnel.git. Jest instalowalny za pomocą managera pakietów *uv*.
-
-```
-git clone https://gitlab-stud.elka.pw.edu.pl/npieczko/funnel.git
-cd funnel
-make uv
-source .venv/bin/activate
-```
-
-Nasza biblioteka umożliwia dodawanie tras (route) przez dektorator. Aby uruchomić przykładowy serwer HTTP należy wywołać komendę:
-
-```
-make run_server
-```
-
----
-
-## **Opis interfejsu użytkownika**
-
-### Dekorator route
-
-Zaimplementowany został dekorator *route*, który umożliwia dodanie trasy do serwera.
-
-Struktura:
-```python
-@server.route(<path>, <methods>, <host>)
-```
-
-**path** - adres trasy
-
-**methods** - lista metod obsługiwanych pod daną trasą
-
-**host** - opcjonalny argument oznaczający adres hosta. W przypadku gdy host jest zdefiniowany, żądzanie musi zawierać dokładną nazwę hosta, aby zostało odbrane. Jezeli host nie zostanie podany żądania będą obsługiwane nieżaleznie od wartości nagłówka Host.
-
-Przykład użycia:
+Use the `@server.route()` decorator to map URL paths to your handler functions. You can specify which HTTP methods are allowed and even bind routes to a specific hostname.
 
 ```python
+# Initialize the server with a config file
 server = HTTPServer("./config/server_config.yaml")
 
+# Define a simple GET route for a specific host
 @server.route("/", methods=["GET", "POST"], host="example.com")
 def home_example(request):
     return Response.html(
-        200, "OK", "<h1>Welcome to the Home Page of example.com host!</h1>"
+        200, "OK", "<h1>Welcome to the Home Page of example.com!</h1>"
     )
 ```
 
-### Dekorator auth
-
-Dekorator umożliwa zabezpieczenie endpointu autoryzacją **Basic** lub **Bearer**.
-
-Struktura:
+### Securing Endpoints
+Protect your routes using the `@auth.authenticate()` decorator. Funnel supports both `Basic` and `Bearer` authentication schemes.
 
 ```python
-@auth.authenticate(type=<type>)
-```
-
-**type** - rodzaj autoryzacji `"Basic"` lub `"Bearer"`.
-
-Przykład użycia:
-
-```python
+# Initialize the authentication handler
 auth = Auth()
-auth.configure_user_source(JsonUserSource("users.json"))
+auth.configure_user_source(JsonUserSource("users.json")) # Load users from a JSON file
 
+# Secure an endpoint with Bearer token authentication
 @server.route("/protected_bearer", methods=["GET"])
 @auth.authenticate(type="Bearer")
 def protected_endpoint_bearer(request):
-    return Response.json(200, "OK", {"message": "Welcome!"})
-```
+    return Response.json(200, "OK", {"message": "Welcome, authenticated user!"})
+``` 
 
+## 🛠️ **Configuration**
+The server is configured using a `server_config.yaml` file. This allows you to define the host, port, worker thread limit, and directories you want to serve.
 
----
-
-## **Środowisko sprzętowo-programowe i narzędziowe**
-
-### **1. Systemy operacyjne**
-   - **Linux** i **macOS** – system testowy i deweloperski.
-
----
-
-### **2. Biblioteki programistyczne**
-   - **Python 3.13** – język programowania do implementacji biblioteki i serwera.
-   - **Standardowa biblioteka Pythona**:
-     - `socket` - do implementacji niskopoziomowej komunikacji sieciowej dla protokołu HTTP,
-     - `threading` – do obsługi wielowątkowości i równoczesnych połączeń,
-     - `os` i `pathlib` – zarządzanie ścieżkami plików i katalogów,
-     - `logging` – logowanie zdarzeń i błędów serwera,
-     - `json` – przetwarzanie danych wejściowych w formacie JSON.
-
----
-
-### **3. Narzędzia programistyczne**
-   - **Edytor kodu**:
-     - **Visual Studio Code** (VS Code) – główny edytor z rozszerzeniami dla Pythona.
-   - **Kontrola wersji**:
-     - **Git** – system kontroli wersji.
-     - **GitLab** – repozytorium kodu źródłowego.
-   - **Debugowanie**:
-     - **PDB** – wbudowany debugger Pythona,
-     - **VS Code Debugger** – graficzne narzędzie do debugowania.
-
----
-
-### **4. Narzędzia do testowania**
-   - **Testy jednostkowe**:
-     - **pytest** – narzędzie do testów automatycznych.
-   - **Testy integracyjne**:
-     - **requests** – biblioteka do wysyłania żądań HTTP podczas testów.
-   - **Manualne testowanie**:
-     - **Postman** – narzędzie do ręcznego testowania żądań HTTP.
-     - **curl** – wiersz poleceń do wysyłania żądań HTTP.
-
----
-
-## **Architektura rozwiązania**
-
-System składa się z **dwóch głównych części**:
-
-1. **Biblioteka serwera HTTP**
-   - Tworzy podstawową funkcjonalność umożliwiającą obsługę serwera HTTP.
-   - Główne elementy biblioteki:
-     - **Komunikacja sieciowa**: Odpowiada za tworzenie gniazd (`socket`) i obsługę połączeń od klientów.
-     - **Routing**: Mapuje trasy HTTP na funkcje obsługi żądań.
-     - **Obsługa żądań i odpowiedzi**: Przetwarza przychodzące żądania i generuje odpowiedzi HTTP z odpowiednimi kodami statusu.
-     - **Autoryzacja**: Weryfikuje poprawność nagłówków autoryzacyjnych (**Basic** i **Bearer Authorization**).
-     - **Logowanie**: Rejestruje informacje o żądaniach i błędach serwera do logów.
-
-2. **Aplikacja serwera HTTP**
-   - Korzysta z opracowanej biblioteki do implementacji działającego serwera HTTP.
-   - Wykorzystuje możliwości biblioteki do:
-     - Montowania lokalnych katalogów pod zdefiniowanymi trasami HTTP,
-     - Konfiguracji serwera (host, port, autoryzacja) z pliku **YAML**,
-     - Definiowania reguł autoryzacji i tras (routingu),
-     - Testowania i uruchomienia serwera w środowisku lokalnym.
-
----
-
-## **Sposób testowania**
-
-### **1. Testy jednostkowe**
-Testy jednostkowe sprawdzają poprawność działania poszczególnych komponentów biblioteki.
-- **Zakres testów**:
-   - Weryfikacja poprawnego przetwarzania żądań HTTP (GET, POST, DELETE).
-   - Sprawdzenie działania routingu i mapowania tras.
-   - Testowanie mechanizmów autoryzacji (**Basic** i **Bearer Authorization**).
-   - Generowanie odpowiedzi HTTP z poprawnymi nagłówkami i statusami.
-   - Obsługa błędów (np. brak zasobu, nieprawidłowe żądanie).
-   - Obsługa nagłówka Range
-
-- **Narzędzie**:
-   - **pytest** – główne narzędzie do automatyzacji testów jednostkowych.
-
----
-
-### **2. Testy integracyjne**
-Testy integracyjne sprawdzają współdziałanie głównych komponentów systemu.
-- **Zakres testów**:
-   - Poprawne działanie serwera w odpowiedzi na żądania HTTP.
-   - Testowanie pełnego przepływu żądania: od odbioru przez gniazdo sieciowe po wygenerowanie odpowiedzi.
-   - Weryfikacja autoryzacji w przypadku chronionych zasobów.
-   - Sprawdzenie montowania lokalnych katalogów i udostępniania plików.
-   - Obsługa błędów przy niepoprawnych lub nieobsługiwanych żądaniach.
-
-- **Narzędzia**:
-   - **requests** – biblioteka do wysyłania żądań HTTP w testach.
-   - **pytest** – automatyzacja integracyjnych przypadków testowych.
-
----
-
-### **3. Testy manualne**
-Testy manualne pozwolą zweryfikować serwer z perspektywy użytkownika.
-- **Zakres testów**:
-   - Wysłanie żądań HTTP przy użyciu narzędza **curl**.
-   - Sprawdzenie udostępniania zasobów statycznych (pliki i katalogi).
-   - Testowanie chronionych zasobów: poprawne i niepoprawne dane autoryzacyjne.
-   - Weryfikacja obsługi sytuacji błędnych (404, 403, 500).
-
-- **Narzędzia**:
-   - **curl** – narzędzie wiersza poleceń do wysyłania żądań HTTP.
-
----
-
-### Wyniki testowania
-
-Napisane testy jednostkowe zapewniły porycie linii kodu na poziomie 100%. 
-
-
-## **Podział pracy w zespole**
-
-### **Daniel Machniak: Komunikacja sieciowa i konfiguracja**
-- Implementacja mechanizmu **routingu**:
-   - Mapowanie tras HTTP na funkcje obsługi.
-- Implementacja mechanizmu **niskopoziomowej komunikacji** przy użyciu `socket`:
-   - Tworzenie gniazd, nasłuchiwanie połączeń, akceptowanie klientów.
-- Dodanie obsługi wielowątkowości z wykorzystaniem **threading**.
-- Obsługa podstawowych metod HTTP (**GET**).
-- Implementacjia funkcjonalności montowania katalogów.
-- Przygotowanie **testów jednostkowych** i **testów integracyjnych** dla poszczególnych komponentów.
-
----
-
-### **Krzysztof Gólcz: Routing i obsługa żądań**
-- Wczytywanie konfiguracji serwera (host, port, ścieżki) z pliku **YAML**.
-- Obsługa podstawowych metod HTTP (**DELETE**)
-- Implementacjia funkcjonalności montowania katalogów.
-- Przygotowanie **testów jednostkowych** i **testów integracyjnych** dla poszczególnych komponentów.
-
----
-
-### **Natalia Pieczko: Autoryzacja, logowanie i testowanie**
-- Implementacja mechanizmów autoryzacji (**Basic Authorization**, **Bearer Authorization**).
-- Ulepszenie mechanizmu **niskopoziomowej komunikacji** umożliwiając przesyłanie większych porcji danych.
-- Obsługa podstawowych metod HTTP (**POST**)
-- Implementacja **logowania** żądań (adres IP, metoda, ścieżka, status odpowiedzi) i zapisu do pliku logów.
-- Dodanie mechnizmu obsługi nagłówka **Range**
-- Przygotowanie **testów jednostkowych** i **testów integracyjnych** dla poszczególnych komponentów.
-
-
----
-
-### **Wspólne zadania**
-- **Integracja** wszystkich modułów w jeden spójny system.
-- Stworzenie przykładowej aplikacji serwera HTTP z wykorzystaniem biblioteki.
-- Testowanie całości rozwiązania pod kątem wydajności i poprawności.
-- Przygotowanie dokumentacji końcowej.
-
----
-
-## **Przewidywane  funkcje do zademonstrowania**
-
-1. **Uruchomienie serwera**
-
-2. **Routing i obsługa tras**
-   - Mapowanie tras HTTP na funkcje obsługi.
-   - Przykłady:
-     - **GET** `/hello` – zwrócenie komunikatu tekstowego,
-     - **POST** `/echo` – odbiór danych JSON i ich zwrócenie w odpowiedzi.
-
-3. **Autoryzacja**
-   - Weryfikacja dostępu do chronionych zasobów za pomocą:
-     - **Basic Authorization**,
-     - **Bearer Authorization**.
-
-4. **Montowanie katalogów**
-   - Udostępnienie plików lokalnych przez HTTP (np. `/static`).
-
-5. **Obsługa błędów**
-   - Przykłady sytuacji błędnych:
-     - **404 Not Found** – brak zasobu,
-     - **401 Unauthorized** – brak autoryzacji,
-     - **405 Method Not Allowed** – metoda nieobsługiwana.
-
-6. **Logowanie żądań**
-   - Rejestrowanie podstawowych informacji o żądaniach: metoda, trasa, status odpowiedzi.
-   - Zapis logów do pliku tekstowego.
-
----
-
-## **Harmonogram pracy**
-
-### **Tydzień 1: Przygotowanie środowiska i implementacja podstaw serwera**
-
- - Przygotowanie struktury projektu i pliku konfiguracyjnego **YAML**.
- - Implementacja komunikacji sieciowej z użyciem `socket`:
-   - Tworzenie gniazda, nasłuchiwanie połączeń i akceptowanie klientów.
- - Implementacja podstawowego routingu:
-   - Obsługa prostych tras **GET**.
- - Stworzenie mechanizmu logowania żądań.
-
-**Wynik tygodnia**: Serwer przyjmuje połączenia, obsługuje proste żądanie **GET**, loguje żądania.
-
----
-
-### **Tydzień 2: Rozbudowa funkcjonalności serwera**
-
- - Dodanie obsługi wielowątkowości przy użyciu **threading**.
- - Rozbudowa routingu o obsługę metod: **POST** i **DELETE**.
- - Implementacja **Basic Authorization**.
-
-**Wynik tygodnia**: Serwer obsługuje metody **GET, POST, DELETE**, wspiera wielowątkowość i autoryzację **Basic**.
-
----
-
-### **Tydzień 3: Finalizacja kluczowych funkcji (odbiór częściowy)**
-
- - Dodanie montowania katalogów lokalnych pod trasy HTTP (np. `/static`).
- - Weryfikacja obsługi błędów:
-   - **404 Not Found**, **405 Method Not Allowed**.
- - Rozszerzenie autoryzacji o **Bearer Authorization**.
-
-
-**Odbiór częściowy**:
-- Uruchomienie serwera z podstawowymi funkcjami: komunikacja sieciowa, routing, autoryzacja, montowanie katalogów i obsługa błędów.
-- Demonstracja testów jednostkowych i manualnych.
-
----
-
-### **Tydzień 4: Testowanie i optymalizacja**
-
-   - Optymalizacja obsługi wielowątkowości i logiki serwera.
-   - Przygotowanie testów integracyjnych i manualnych.
-   - Dokumentacja przypadków testowych i wyników.
-
-**Wynik tygodnia**: Serwer jest w pełni przetestowany pod kątem jednostkowym, integracyjnym i manualnym.
-
----
-
-### **Tydzień 5: Finalizacja i odbiór projektu**
-
-  - Integracja wszystkich modułów i ostateczne testowanie całości.
-  - Przygotowanie logów serwera i raportu z wyników testów.
-  - Dokumentacja techniczna i użytkowa projektu (README).
-  - Prezentacja funkcji serwera:
-    - Uruchomienie serwera,
-    - Obsługa żądań (GET, POST, DELETE),
-    - Autoryzacja,
-    - Logowanie i obsługa błędów.
-
-**Wynik tygodnia**: Gotowy, przetestowany serwer HTTP z dokumentacją i funkcjami do demonstracji.
-
----
-
-## **Opis najważniejszych rozwiązań funkcjonalnych**
-
-### **Struktury danych**
-
-#### **Klasa `Request`**
-Reprezentuje żądanie HTTP. Jest odpowiedzialna za parsowanie surowych danych z gniazda klienta.
-
-**Atrybyty:** 
-- `method`, `path`, `protocol`: Kluczowe informacje z linii żądania
-- `headers`: Nagłówki HTTP w formie słownika
-- `query_params`: Parametry zapytania wyciągnięte z URL.
-- `body` i `parsed_body`: Ciało żądania w formie surowej oraz sparsowanej (JSON lub dane formularza).
-
-**Kluczowe metody:**
-- `_parse_request_line`: Rozdziela linię żądania na metodę, ścieżkę i protokół.
-- `_parse_headers`: Zamienia nagłówki HTTP na słownik i weryfikuje ich poprawność.
-- `_parse_body`: Odczytuje ciało żądania na podstawie nagłówka Content-Length.
-- `_parse_body_content`: Sparsowane ciało żądania jest konwertowane na JSON lub dane formularza, zależnie od nagłówka `Content-Type`.
-
----
-
-#### **Klasa `Response`**
-
-Generuje odpowiedzi HTTP
-
-**Atrybuty:**
-- `status_code`, `reason`: Kod statusu i powód odpowiedzi (np. `200 OK`).
-- `headers`: Nagłówki odpowiedzi (np. `Content-Type`).
-- `body`: Treść odpowiedzi (może być tekstowa lub binarna).
-
-**Kluczowe metody:**
-- `to_http`: Generuje odpowiedź w formacie bajtowym, gotową do wysłania klientowi.
-
-- `json` i `html`: Metody klasowe tworzące odpowiedzi JSON lub HTML.
----
-
-### **Komponenty**
-
-#### **Klasa `Router`**
-
-Zarządza wszystkimi zarejestrowanymi trasami i przypisanymi do nich handlerami.
-
-**Atrybuty:**
-- `static_routes`: Słownik dla statycznych tras o strukturze:
-  ```python
-  {
-    RouteKey(host, path): {
-        "GET": handler_get,
-        "POST": handler_post,
-        ...
-    }
-  }
-  ```
-- `dynamic_routes`: Lista obsługująca trasy dynamiczne z parametrami (np. `/user/<id>`), zawierająca krotki:
-  ```python
-  [(RouteKey, regex, methods)]
-  ```
-
-**Kluczowe metody:**
-- `_add_route`: Dodaje nową trasę do statycznych lub dynamicznych tras.
-- `get_handler`: Wyszukuje odpowiedni handler dla danej trasy i metody HTTP. Obsługuje zarówno statyczne, jak i dynamiczne trasy.
-- `route`: Dekorator ułatwiający rejestrowanie tras w kodzie aplikacji.
-
----
-
-#### **Klasa `HTTPServer`**
-Odpowiada za główną logikę serwera HTTP. Jest to punkt wejścia całej aplikacji, który obsługuje przychodzące żądania HTTP, deleguje je do odpowiednich handlerów za pomocą routera i zarządza konfiguracją serwera.
-
-**Atrybuty:**
-- `host` i `port`: Adres i port, na którym działa serwer, pobrane z pliku konfiguracyjnego.
-- `router`: Obiekt klasy `Router` odpowiedzialny za rejestrowanie i rozpoznawanie tras oraz przypisywanie ich do odpowiednich handlerów.
-- `executor`: Obiekt klasy `ThreadPoolExecutor`, który umożliwia obsługę wielu żądań jednocześnie w osobnych wątkach.
-- `_server_socket`: Główne gniazdo serwera do nasłuchiwania przychodzących połączeń.
-
-**Kluczowe metody:**
-
-- `start`: Inicjalizuje gniazdo serwera, ustawia je w trybie nasłuchiwania, a następnie uruchamia pętlę obsługi żądań.
-- `_handle_request`: W osobnym wątku obsługuje jedno przychodzące żądanie:
-  - Parsuje surowe dane HTTP za pomocą klasy Request.
-  - Wybiera odpowiedni handler za pomocą Router.get_handler.
-  - Generuje odpowiedź za pomocą klasy Response.
-- `_receive_headers` i `_receive_body`: Obsługują odczyt danych z gniazda klienta, dzieląc je na nagłówki i ciało.
-- `stop`: Zatrzymuje serwer w sposób bezpieczny, zamykając wszystkie otwarte zasoby.
-
----
-
-#### **Klasa `Auth`**
-Obsługuje mechanizmy uwierzytelniania i autoryzacji w systemie HTTP. Dostarcza funkcjonalności generowania i weryfikacji tokenów JWT, uwierzytelniania użytkowników przy użyciu metod Bearer i Basic, a także dekoratora do zabezpieczania endpointów.
-
-**Atrybuty klasy:**
-- `SECRET_KEY`: Klucz tajny używany do podpisywania i weryfikacji tokenów JWT. Ładowany z pliku .env.
-
-**Atrybuty instancji:**
-- `user_source`: Źródło danych użytkowników (obiekt klasy UserSource), wykorzystywane do weryfikacji użytkowników podczas uwierzytelniania.
-
-**Kluczowe metody:**
-- `configure_user_source`: Konfiguruje źródło danych użytkowników.
-- `generate_token`: Generuje token JWT na podstawie danych użytkownika oraz określonego czasu ważności.
-- `decode_token`: Dekoduje i weryfikuje token JWT.
-- `authenticate_user_bearer`: Weryfikuje poprawność tokena Bearer, dekoduje go i sprawdza obecność użytkownika w źródle danych.
-- `authenticate_user_basic`: Dekoduje dane logowania przesłane w nagłówku Basic Auth, a następnie weryfikuje użytkownika w źródle danych.
-- `authenticate`: Dekorator zabezpieczający endpointy. Obsługuje zarówno autoryzację Bearer, jak i Basic.
-
----
-
-#### **Klasa `UserSource`**
-- Klasa bazowa, definiująca interfejs dla źródeł danych użytkowników. Klasa wymaga implementacji metody get_user przez klasy dziedziczące.
-
-**Metody abstrakcyjne**
-- `get_user`: Abstrakcyjna metoda odpowiedzialna za pobieranie danych użytkownika na podstawie nazwy użytkownika.
-
----
-
-### **Moduł `utils`**
-
-Dostarcza podstawowe funkcje narzędziowe wspierające działanie frameworka `Funnel`. Głównym celem jest obsługa konfiguracji, zarządzanie plikami, katalogami oraz odpowiedziami HTTP.
-
-#### **Funkcje obsługujące konfigurację i montowanie katalogów**
-
-- `load_config`: Wczytuje konfigurację serwera z pliku YAML.
-- `mount_directories`: Montuje katalogi jako trasy w routerze. Bazując na konfiguracji, rejestruje dynamiczne handlery umożliwiające operacje GET, POST oraz DELETE dla podanych tras.
-- `directory_handler_factory`: Generuje handler obsługujący żądania HTTP dla określonego katalogu. Handler umożliwia dynamiczne serwowanie plików i katalogów oraz zapis przesyłanych danych JSON.
-
-#### **Funkcje operacji na plikach**
-
-- `save_json_file`: Zapisuje dane JSON przesłane w żądaniu HTTP POST do podanego katalogu.
-- `delete_file`: Usuwa plik znajdujący się pod podaną ścieżką.
-
-#### **Funkcje zarządzania katalogami i ścieżkami**
-
-- `resolve_requested_path`: Oblicza pełną, znormalizowaną ścieżkę dla żądania HTTP na podstawie bazy katalogów i konfiguracji serwera.
-- `serve_directory`: Generuje listę zawartości katalogu w formacie HTML, umożliwiając przeglądanie plików przez przeglądarkę.
-- `serve_file`: Odpowiada na żądanie HTTP GET, przesyłając plik do klienta. Obsługuje nagłówki Range, umożliwiając pobieranie fragmentów pliku.
-
-#### **Funkcje obsługi nagówka `Range`**
-- `parse_range_header`: Parsuje i waliduje nagłówek Range, określający zakres bajtów pliku do przesłania.
-- `read_file_range`: Czyta fragment pliku z określonego zakresu bajtów.
-- `generate_range_headers`: Tworzy nagłówki HTTP dla odpowiedzi obejmujących zakres bajtów pliku (funkcja wspierająca Range).
-- `generate_full_file_headers`:Generuje nagłówki HTTP dla pełnych plików.
-
----
-
-## **Postać plików konfiguracyjnych oraz logów**
-
-Plik konfiguracyjny umożliwia zdefiniowanie adresu i portu hosta, ograniczenie liczby uruchamianych wątków (liczby obsługiwanych jednocześnie klientów) oraz katalogów do zamontowanie na serwerze.
-
-Przykładowy plik konfiguracyjny
-
+**Example** `server_config.yaml`:
 ```yaml
 host: "127.0.0.1"
 port: 8080
-max_workers: 100
-max_content_length: 16777216 # 16MB
+max_workers: 10
 mounted_directories:
   - path: "/static"
-    directory: "./src"
-  - path: "/project"
-    directory: "."
+    directory: "./public" # Maps the /static URL to the local ./public folder
+  - path: "/files"
+    directory: "/var/data"
 ```
 
-Logi mają postać:
+## 🏗️ **Architecture**
+Funnel is built with a modular and maintainable architecture, consisting of two main parts:
 
-```
-time - logger_name - levelname - client_addres:port - message
-```
+1. HTTP Server Library (`funnel/`): The core of the project. It provides all the building blocks for creating an HTTP server.
+    - `HTTPServer`: The main server class that manages sockets, handles incoming connections, and orchestrates request processing.
+    - `Router`: Maps incoming requests to the correct handler functions based on path, method, and host.
+    - `Request` & `Response`: Classes that represent incoming HTTP requests and outgoing responses, handling parsing and serialization.
+    - `Auth`: Manages `Basic` and `Bearer` authentication logic.
+    - `utils`: A module with helper functions for file operations, configuration loading, and directory serving.
+2. Example Server Application (`examples/main.py`): A sample implementation that demonstrates how to use the Funnel library to build and run a functional server.
 
----
+## 🧪 **Testing**
+The project is thoroughly tested to ensure reliability and correctness.
+- **Unit Tests**: Written with `pytest` to validate individual components like routing, authentication, and request/response handling. The project achieves **100% line coverage**.
+- **Integration Tests**: Use `pytest` and the `requests` library to test the full request-response cycle and ensure all components work together seamlessly.
+- **Manual Testing**: Performed using tools like `curl` and Postman to verify server behavior from a user's perspective.
 
-## **Podsumowanie**
+## 💻 **Tech Stack & Tools**
+- **Language**: Python 3.13
+- **Core Libraries**: `socket`, `threading`, `os`, `pathlib`, `logging`, `json`
+- **Testing**: `pytest`, `requests`
+- **Development Tools**: VS Code, Git, GitHub, curl
 
-Projekt `Funnel` implementuje lekki serwer HTTP, który zapewnia obsługę żądań i odpowiedzi HTTP, zarządzanie trasami, operacje na plikach oraz uwierzytelnianie użytkowników. Rozwiązanie zostało zaprojektowane z myślą o prostocie użytkowania, inspirowanej popularnymi frameworkami, takimi jak `Flask`. Dzięki dekoratorom route i auth konfiguracja tras oraz zabezpieczanie endpointów są intuicyjne i minimalizują kod potrzebny do implementacji.
+## 👥 **The Team**
+This project was a collaborative effort by:
 
----
+- Daniel Machniak: Network Communication, Routing, Multithreading, and Directory Mounting.
+- Krzysztof Gólcz: YAML Configuration, DELETE Method, and Directory Mounting.
+- Natalia Pieczko: Authentication (Basic & Bearer), POST Method, Logging, and Range Header support.
